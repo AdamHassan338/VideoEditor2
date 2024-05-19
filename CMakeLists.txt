@@ -14,7 +14,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBAV REQUIRED libavcodec )
 
 find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Multimedia)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Multimedia MultimediaWidgets)
 
 find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h)
 find_library(AVCODEC_LIBRARY avcodec)
@@ -46,6 +46,10 @@ file(GLOB_RECURSE SOURCES
     src/*.cpp
     src/*.h
 )
+file(GLOB_RECURSE GUI
+    src/gui/timeline/*.cpp
+    src/gui/timeline/*.h
+)
 
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -53,7 +57,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
         ${SOURCES}
-
+        ${GUI}
 
 
     )
@@ -65,11 +69,14 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 target_include_directories(${PROJECT_NAME} PRIVATE ${AVCODEC_INCLUDE_DIR} ${AVFILTER_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR} ${AVUTIL_INCLUDE_DIR} ${AVDEVICE_INCLUDE_DIR} ${SWSCALE_INCLUDE_DIR} ${SWRESAMPLE_INCLUDE_DIR})
 #target_link_libraries(${PROJECT_NAME} PRIVATE )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt${QT_VERSION_MAJOR}::Widgets  Qt${QT_VERSION_MAJOR}::Multimedia ${AVCODEC_LIBRARY} ${AVFILTER_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${AVDEVICE_LIBRARY} ${SWSCALE_LIBRARY} ${SWRESAMPLE_LIBRARY})
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt${QT_VERSION_MAJOR}::Widgets  Qt${QT_VERSION_MAJOR}::Multimedia Qt${QT_VERSION_MAJOR}::MultimediaWidgets ${AVCODEC_LIBRARY} ${AVFILTER_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${AVDEVICE_LIBRARY} ${SWSCALE_LIBRARY} ${SWRESAMPLE_LIBRARY})
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_SOURCE_DIR}/lib/
     ${CMAKE_SOURCE_DIR}/lib/
+    ${CMAKE_SOURCE_DIR}/src/
+    ${CMAKE_SOURCE_DIR}/src/gui/timeline
+    ${CMAKE_SOURCE_DIR}/src/gui/viewer
 
 
 )

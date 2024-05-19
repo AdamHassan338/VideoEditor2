@@ -15,12 +15,13 @@ extern "C"{
 
 
 struct VideoFrame{
-    uint8_t frameData;
+    uint8_t* frameData;
     int linesize;
     int width;
     int height;
     /* TO DO */
     //store pixelFormat
+    /* For now assume rgba32 */
 
     VideoFrame(){
         frameData = NULL;
@@ -74,14 +75,16 @@ struct AudioStreamInfo{
 };
 
 
+enum ImageFromat {RGBA8,RGB8,RGB10,RGBA10};
+
 class Video{
 public:
     Video(const char* path);
 
     bool open();
 
-    bool decodeVideo(int streamIndex,int frameNumber, VideoFrame* videoFrame);
-    bool decodeAudio(int streamIndex, int frameNnumber, AudioFrame& audioFrame);
+    bool decodeVideo(int streamIndex,uint64_t frameNumber, VideoFrame& videoFrame);
+    std::vector<AudioFrame> decodeAudio(int streamIndex, int frameNnumber, AudioFrame& audioFrame);
     bool getAudioStreamInfo(int streamIndex,AudioStreamInfo& info);
 
 
@@ -93,6 +96,11 @@ private:
     //video
     int width;
     int height;
+    double frameRate;
+    int startTime;
+    int frameCount;
+    int duration;
+    int timebase;
     //AVRational timeBase;
     //uint8_t* imageBuffer;
     int64_t pts;

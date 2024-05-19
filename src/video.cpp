@@ -1,5 +1,5 @@
 #include "video.h"
-
+#include <math.h>
 
 const char* av_make_error(int errnum) {
     static char str[AV_ERROR_MAX_STRING_SIZE];
@@ -20,7 +20,7 @@ bool Video::open(){
         qDebug()<<"Could not open source file";
         return false;
     }
-    qDebug() << "Format " >> formatContext->iformat->long_name << " duration " << formatContext->duration << " us";
+    qDebug() << "Format " << formatContext->iformat->long_name << " duration " << formatContext->duration << " us";
 
     if(avformat_find_stream_info(formatContext,NULL) <0){
         qDebug()<<"Could not find stream info";
@@ -51,27 +51,45 @@ bool Video::open(){
     return true;
 }
 
-bool Video::decodeVideo(int streamIndex, int frameNumber, VideoFrame *videoFrame){
+bool Video::decodeVideo(int streamIndex, uint64_t frameNumber, VideoFrame &videoFrame){
 
     AVStream* stream = formatContext->streams[videoStreamIndexes[streamIndex]];
     double framerate = stream->avg_frame_rate.num / stream->avg_frame_rate.den;
-    uint64_t pts = (int64_t)(frameNumber * (double)stream->time_base.den / ((double)framerate * stream->time_base.num));
-
+    int64_t pts = (int64_t)((double)frameNumber * (double)stream->time_base.den / (double)((double)framerate * (double)stream->time_base.num));
+    qDebug()<<"seek for " << pts;
+    qDebug()<<"seek for adjusted" << pts + stream->start_time;
     streamIndex = videoStreamIndexes[streamIndex];
+    //pts = frameNumber/(av_q2d(formatContext->streams[streamIndex]->time_base) * framerate);
+    //pts =  frameNumber * 10000000.0/av_q2d(formatContext->streams[streamIndex]->avg_frame_rate);
+    //if(frameNumber<frameCount/2)
+      //  av_seek_frame(formatContext,streamIndex,pts, AVSEEK_FLAG_FRAME | AVSEEK_FLAG_ANY);
+    //else
+    AVCodecContext* codecCtx = codecContexts[streamIndexes[packet->stream_index]];
 
-    av_seek_frame(formatContext,streamIndex,pts, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
+    qDebug() << "starting at " <<stream->start_time;
+    pts += stream->start_time;
+    av_seek_frame(formatContext,streamIndex,pts, AVSEEK_FLAG_BACKWARD);
+
+    avcodec_flush_buffers(codecCtx);
+
+
+
     bool found = false;
     int responce;
 
+    int lastpts = -1;
 
-    while(!found && av_read_frame(formatContext,packet) >= 0){
+    while(!found){
+        if(!av_read_frame(formatContext,packet)<=0)
+        found = true;
+
         if(packet->stream_index != streamIndex){
             av_packet_unref(packet);
             continue;
         }
 
-        AVCodecContext* codecCtx = codecContexts[videoStreamIndexes[streamIndex]];
-
+        //qDebug("Packet PTS: %llu", packet->pts);
+        unsigned long long packetPTS = packet->pts;
         responce = avcodec_send_packet(codecCtx,packet);
 
         if(responce<0){
@@ -80,16 +98,36 @@ bool Video::decodeVideo(int streamIndex, int frameNumber, VideoFrame *videoFrame
         }
 
         responce = avcodec_receive_frame(codecCtx,frame);
-
         if(responce == AVERROR(EAGAIN) || responce == AVERROR(EOF)){
-
             av_packet_unref(packet);
+            av_frame_unref(frame);
             continue;
         }
+        qDebug("Frame PTS: %lu", frame->pts);
 
-        else if (frame->best_effort_timestamp == pts) {
+
+        // Get frame pts
+        uint64_t current_pts = frame->best_effort_timestamp == AV_NOPTS_VALUE ? frame->pts : frame->best_effort_timestamp;
+
+        /*if (current_pts == AV_NOPTS_VALUE) {
+            av_frame_unref(frame);
+            continue;
+        }
+        if (current_pts == AV_NOPTS_VALUE) {
+            qDebug("Frame without PTS, skipping");
+            av_frame_unref(frame);
+            continue;
+        }*/
+        /*if ((current_pts>pts)) {
+            av_frame_unref(frame);
+            continue;
+        }*/
+
+
+        if (frame->pts ==pts) {
             found = true;
             av_packet_unref(packet);
+            qDebug()<<"break A";
             break;
         }
 
@@ -100,11 +138,20 @@ bool Video::decodeVideo(int streamIndex, int frameNumber, VideoFrame *videoFrame
 
         }
 
-        //av_packet_unref(state->packet);
+        if(found)
+            break;
+
+
+        //av_packet_unref(packet);
         //break;
 
     }
 
+
+    if (!found) {
+        qDebug("Frame with PTS %llu not found", pts);
+        return false;
+    }
 
     pts = frame->pts;
 
@@ -128,27 +175,34 @@ bool Video::decodeVideo(int streamIndex, int frameNumber, VideoFrame *videoFrame
     //convert YUV data to RGBA
     /* TO DO */
 
-
-    //uint8_t* output[4] = {frameBuffer,NULL,NULL,NULL};
+    uint8_t* frameBuffer = new uint8_t [frame->width * frame->height * 4 ]; //multiply by 4 for the 4 channels R G B A
+    uint8_t* output[4] = {frameBuffer,NULL,NULL,NULL};
     int outputLinesize [4] = {frame->width * 4,0,0,0};
 
-    //sws_scale(scaler,frame->data,frame->linesize,0,frame->height,output,outputLinesize);
+    sws_scale(scaler,frame->data,frame->linesize,0,frame->height,output,outputLinesize);
 
-   // videoFrame->frameData = output;
-    videoFrame->width = frame->width;
-    videoFrame->height = frame->height;
-    //videoFrame->linesize = frame->linesize;
+    videoFrame.frameData = output[0];
+    videoFrame.width = frame->width;
+    videoFrame.height = frame->height;
+    videoFrame.linesize = outputLinesize[0];
     //videoFrame->format =
+    av_frame_unref(frame);
+
 
     return true;
 }
 
-bool Video::decodeAudio(int streamIndex, int frameNnumber, AudioFrame &audioFrame){
+std::vector<AudioFrame> Video::decodeAudio(int streamIndex, int frameNnumber, AudioFrame &audio){
+    std::vector<AudioFrame> list;
     AVCodecContext* codecCtx = codecContexts[audioStreamIndexes[streamIndex]];
     streamIndex = audioStreamIndexes[streamIndex];
+    AVStream* stream = formatContext->streams[videoStreamIndexes[0]];
+    double framerate = stream->avg_frame_rate.num / stream->avg_frame_rate.den;
+    uint64_t pts = codecCtx->sample_rate * frameNnumber /framerate;
+    uint64_t nextpts = codecCtx->sample_rate * (frameNnumber+1) /framerate;
 
-    uint64_t pts = frameNnumber * codecCtx->frame_size;
-    av_seek_frame(formatContext,streamIndex,pts,  AVSEEK_FLAG_FRAME);
+    //qDebug() << "frame: " << frameNnumber <<" pts: " <<pts <<" NextPts: " <<nextpts;
+    av_seek_frame(formatContext,streamIndex,pts, AVSEEK_FLAG_BACKWARD);
     //avcodec_flush_buffers(codecCtx);
 
     int responce;
@@ -157,18 +211,32 @@ bool Video::decodeAudio(int streamIndex, int frameNnumber, AudioFrame &audioFram
 
     while(!found && av_read_frame(formatContext,packet)>=0){
 
-        if (packet->stream_index != audioStreamIndexes.at(streamIndex) ){
+        if (packet->stream_index != streamIndex ){
             av_packet_unref(packet);
             continue;
         }
+        if(packet->pts<pts){
+            //qDebug()<< "packet pts: " << packet->pts;
 
-        codecCtx = codecContexts[streamIndexes[packet->stream_index]];
+            av_packet_unref(packet);
+
+            //av_frame_unref(frame);
+            continue;
+        }
+        if(packet->pts>=nextpts){
+            //qDebug()<< "packet pts: " << packet->pts;
+
+            av_packet_unref(packet);
+            return list;
+        }
+
+        //codecCtx = codecContexts[streamIndexes[packet->stream_index]];
 
 
         responce = avcodec_send_packet(codecCtx,packet);
         if(responce<0){
             qDebug("Failed to decode packet\n");
-            return false;
+            return list;
         }
 
         responce = avcodec_receive_frame(codecCtx,frame);
@@ -180,11 +248,9 @@ bool Video::decodeAudio(int streamIndex, int frameNnumber, AudioFrame &audioFram
         }
 
 
-        if(frame->best_effort_timestamp!=pts){
-            av_packet_unref(packet);
-            //av_frame_unref(frame);
-            continue;
-        }
+
+        //qDebug()<<"framePts: " << frame->pts;
+        //qDebug()<< "packet pts: " << packet->pts;
 
         SwrContext* sampler = resampleContexts[streamIndexes[packet->stream_index]];
 
@@ -192,9 +258,9 @@ bool Video::decodeAudio(int streamIndex, int frameNnumber, AudioFrame &audioFram
         enum AVSampleFormat src_sample_fmt = codecCtx->sample_fmt, dst_sample_fmt = av_get_packed_sample_fmt(static_cast<AVSampleFormat>(codecCtx->sample_fmt));
         int src_nb_channels = frame->ch_layout.nb_channels, dst_nb_channels = frame->ch_layout.nb_channels;
 
-        swr_alloc_set_opts2(&sampler,
-                            &frame->ch_layout,dst_sample_fmt,dst_nb_samples,&frame->ch_layout,src_sample_fmt,src_nb_samples,0,nullptr);
-        swr_init(sampler);
+       // swr_alloc_set_opts2(&sampler,
+         //                   &frame->ch_layout,dst_sample_fmt,dst_nb_samples,&frame->ch_layout,src_sample_fmt,src_nb_samples,0,nullptr);
+        //swr_init(sampler);
         uint8_t* output_buffer;
 
         int output_buffer_size = av_samples_get_buffer_size(nullptr, dst_nb_channels,dst_nb_samples, dst_sample_fmt, 0);
@@ -204,13 +270,16 @@ bool Video::decodeAudio(int streamIndex, int frameNnumber, AudioFrame &audioFram
 
         av_packet_unref(packet);
         av_frame_unref(frame);
+        AudioFrame audioFrame;
         audioFrame.frameData= output_buffer;
         audioFrame.frameSize = output_buffer_size;
-        return true ;
+        list.push_back(audioFrame);
+
+
 
     }
 
-    return false;
+    return list;
 }
 
 bool Video::getAudioStreamInfo(int streamIndex, AudioStreamInfo &info)
@@ -234,6 +303,7 @@ quint64 Video::assignStreamId(int streamIndex, AVFormatContext *format){
     AVCodecParameters* params = format->streams[streamIndex]->codecpar;
     AVMediaType type = params->codec_type;
     if(type==AVMEDIA_TYPE_VIDEO){
+
         numVidesStreams++;
         videoStreamIndexes.push_back(streamIndex);
 
@@ -258,13 +328,28 @@ quint64 Video::assignStreamId(int streamIndex, AVFormatContext *format){
 
 
     if(type==AVMEDIA_TYPE_VIDEO){
-        SwsContext* scaler = sws_getContext(params->width,params->height,static_cast<AVPixelFormat>(params->format),params->width,params->height,AV_PIX_FMT_RGB0,SWS_BICUBLIN,NULL,NULL,NULL);
+        SwsContext* scaler = sws_getContext(params->width,params->height,static_cast<AVPixelFormat>(params->format),params->width,params->height,AV_PIX_FMT_RGBA,SWS_BICUBLIN,NULL,NULL,NULL);
         scalerContexts[id] = scaler;
+        width = params->width;
+        height = params->height;
+        frameRate = formatContext->streams[videoStreamIndexes[0]]->avg_frame_rate.num;
+        startTime = formatContext->streams[videoStreamIndexes[0]]->start_time;
+        frameCount = formatContext->streams[videoStreamIndexes[0]]->nb_frames;
+        duration = (double)formatContext->streams[videoStreamIndexes[0]]->duration*(double)(formatContext->streams[videoStreamIndexes[0]]->time_base.num/formatContext->streams[videoStreamIndexes[0]]->time_base.den);
+        AVStream* ABC = formatContext->streams[videoStreamIndexes[0]];
+        int a=2;
     }
     else{
         SwrContext* resampler = nullptr;
+        int src_nb_samples = params->sample_rate, dst_nb_samples = params->sample_rate;
+        enum AVSampleFormat src_sample_fmt = codecCtx->sample_fmt, dst_sample_fmt = av_get_packed_sample_fmt(static_cast<AVSampleFormat>(codecCtx->sample_fmt));
+        //int src_nb_channels = frame->ch_layout.nb_channels, dst_nb_channels = frame->ch_layout.nb_channels;
+
         swr_alloc_set_opts2(&resampler,
-                            &params->ch_layout,AV_SAMPLE_FMT_S16,codecCtx->sample_rate,&params->ch_layout,codecCtx->sample_fmt,codecCtx->sample_rate,0,nullptr);
+                            &params->ch_layout,dst_sample_fmt,dst_nb_samples,&params->ch_layout,src_sample_fmt,src_nb_samples,0,nullptr);
+        //swr_init(sampler);
+        //swr_alloc_set_opts2(&resampler,
+          //                  &params->ch_layout,AV_SAMPLE_FMT_S16,codecCtx->sample_rate,&params->ch_layout,codecCtx->sample_fmt,codecCtx->sample_rate,0,nullptr);
 
         if ((swr_init(resampler)) < 0)
             qDebug()<<"Failed to initialize the resampling context";
