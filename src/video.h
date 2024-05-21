@@ -70,8 +70,26 @@ constexpr QAudioFormat::SampleFormat mapSampleFormat(AVSampleFormat sampleFormat
 struct AudioStreamInfo{
     int sampleRate;
     int channelCount;
+    int sampleCount;
     AVSampleFormat format;
     AVSampleFormat packedFormat;
+    /* to do */
+    /* add duration of audio steamm */
+};
+
+struct VideoStreamInfo{
+    int frameRate;
+    int width;
+    int height;
+    AVPixelFormat pixFmt;
+    int frameCount;
+};
+
+struct VideoFileInfo{
+    int numberStreams;
+    int numberAudioStreams;
+    int numberVideoStreams;
+    VideoFileInfo() : numberStreams(0),numberAudioStreams(0),numberVideoStreams(0){}
 };
 
 
@@ -86,8 +104,8 @@ public:
     bool decodeVideo(int streamIndex,uint64_t frameNumber, VideoFrame& videoFrame);
     std::vector<AudioFrame> decodeAudio(int streamIndex, int frameNnumber, AudioFrame& audioFrame);
     bool getAudioStreamInfo(int streamIndex,AudioStreamInfo& info);
-
-
+    bool getVideoStreamInfo(int streamIndex,VideoStreamInfo& info);
+    bool getVideoFileInfo(VideoFileInfo& info);
 
 private:
     const char* m_path;
@@ -105,13 +123,13 @@ private:
     //uint8_t* imageBuffer;
     int64_t pts;
     std::vector<int> videoStreamIndexes;
-    int numVidesStreams;
+    int numVideoStreams = 0;
     std::vector<int> audioStreamIndexes;
     std::unordered_map<quint64,AVCodecContext*> codecContexts;
     std::unordered_map<quint64,SwsContext*> scalerContexts;
     std::unordered_map<quint64,SwrContext*> resampleContexts;
     std::unordered_map<int,quint64> streamIndexes;
-    int numAudioStreams;
+    int numAudioStreams = 0;
     quint64 nextId = 0;
 
 

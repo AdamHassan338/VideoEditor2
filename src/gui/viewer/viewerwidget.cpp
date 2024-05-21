@@ -13,7 +13,7 @@ ViewerWidget::ViewerWidget(QWidget *parent)
     layout->setSpacing(0);
 
     m_label = new QLabel(this);
-   // m_label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     m_label->setMinimumSize(100,100);
 
     QImage img(parent->height(),parent->height(),QImage::Format_RGB888);
@@ -59,16 +59,18 @@ void ViewerWidget::setSrcRes(int width, int height)
 void ViewerWidget::scalePixmap()
 {
     int width = size().width();
-    int height = size().height()-m_playButton->height();
+    int height = size().height()-m_playButton->height()-100;
     double scaleWidth = (double)width/(double)m_srcWidth;
     double scaleHeight = (double)height/(double)m_srcHeight;
-    double scale = std::min(scaleWidth,scaleHeight);
+    double scale = width>height ? scaleHeight : scaleWidth;
     height = scale* m_srcHeight;
     width = scale * m_srcWidth;
     QImage img(width, height, QImage::Format_RGB888);
     img.fill(Qt::black);
     QPixmap pixmap = QPixmap::fromImage(img);
     m_label->setPixmap(pixmap);
+    qDebug()<< "width: " << width << " Height: " << height;
+    qDebug() << m_label->rect();
 }
 
 void ViewerWidget::resizeEvent(QResizeEvent *event)

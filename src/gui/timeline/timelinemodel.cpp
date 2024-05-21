@@ -13,12 +13,12 @@ TimelineModel::TimelineModel()
 
 }
 
-void TimelineModel::addClip(int trackIndex, int pos, int in, int out)
+void TimelineModel::addClip(int trackIndex, int pos, int in, int out,Video* video,int streamIndex,MediaType type)
 {
     TrackModel* track;
     /* If fake index create new track. */
     if(!hasIndex(trackIndex,0)){
-       createTrack();
+       createTrack(type);
     }
 
     track = m_tracks.at(trackIndex);
@@ -29,7 +29,7 @@ void TimelineModel::addClip(int trackIndex, int pos, int in, int out)
     QModelIndex parentIndex = index(trackIndex, 0, QModelIndex());
 
 
-    ClipModel* clip = new ClipModel(pos,in,out,track,track->type());
+    ClipModel* clip = new ClipModel(pos,in,out,video,streamIndex,track,track->type());
 
     insertClip(clip,parentIndex);
 

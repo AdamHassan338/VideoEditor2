@@ -11,12 +11,12 @@ TimelineWidget::TimelineWidget(QWidget *parent)
     QSplitter* splitter = new QSplitter(Qt::Horizontal,this);
     layout->addWidget(splitter);
     TimelineModel* model = new TimelineModel();
-    model->createTrack(MediaType::VIDEO);
-    model->createTrack(MediaType::AUDIO);
+    //model->createTrack(MediaType::VIDEO);
+    //model->createTrack(MediaType::AUDIO);
 
     // track pos in out
-    model->addClip(0,0,0,30);
-    model->addClip(1,0,0,30);
+    //model->addClip(0,0,0,30);
+    //model->addClip(1,0,0,30);
 
     TimelineView* view = new TimelineView(this);
     TracklistView* tracklist = new TracklistView(this);

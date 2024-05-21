@@ -8,6 +8,7 @@
 #include <QFileInfo>
 #include <QMimeData>
 #include "timelinemodel.h"
+#include "resourcemanager.h"
 
 int trackHeight = 25;
 int rulerHeight = 40;
@@ -727,6 +728,7 @@ void TimelineView::dragEnterEvent(QDragEnterEvent *event)
             if (isVideoFile(url.toLocalFile()))
             {
                 hasVideoFiles = true;
+                dropFilePath = url.toLocalFile();
                 break;
             }
             /* TODO */
@@ -783,9 +785,79 @@ void TimelineView::dropEvent(QDropEvent *event)
             trackIndex = timelineModel->createFakeIndex();
         }
         /* TO DO */
-        /* open video, create clips for each stream in that video*/
+        /* Move oening video to the drag enter event */
+        ResourceManager& rm = ResourceManager::getInstance();
+        Video* v = rm.loadVideo(dropFilePath.toStdString());
+        VideoFileInfo fileInfo;
+        if(!v->getVideoFileInfo(fileInfo)){
+            QAbstractItemView::dropEvent(event);
+            return;
+        }
+        int videoframes=0;
         int pos = pointToFrame(m_lastDragPos.x());
-        timelineModel->addClip(trackIndex.row(),pos,0,30);
+        for(int i = 0; i<fileInfo.numberVideoStreams; i++){
+            VideoStreamInfo info;
+            if(!v->getVideoStreamInfo(i,info))
+                continue;
+            videoframes=info.frameCount;
+            if(timelineModel->data(trackIndex,TimelineModel::TrackTypeRole).value<MediaType>()==MediaType::VIDEO || !model()->hasIndex(trackIndex.row(),0)){
+                timelineModel->addClip(trackIndex.row(),pos,0,info.frameCount,v,i,MediaType::VIDEO);
+            }
+            else{
+                bool found = false;
+                for(int j=model()->rowCount()-1;j>=0;j--){
+                    if(found)
+                        break;
+                    trackIndex = model()->index(j,0);
+                    if(timelineModel->data(trackIndex,TimelineModel::TrackTypeRole).value<MediaType>()==MediaType::VIDEO)
+                        found=true;
+                }
+                if(!found)
+                    trackIndex = timelineModel->createFakeIndex();
+
+                timelineModel->addClip(trackIndex.row(),pos,0,info.frameCount,v,i,MediaType::VIDEO);
+
+            }
+            break;
+        }
+        bool newAudioTrack = false;
+        if(fileInfo.numberVideoStreams>0){
+            trackIndex = model()->index(trackIndex.row()+1,0);
+            if(trackIndex.row() == -1){
+                trackIndex = timelineModel->createFakeIndex();
+                newAudioTrack = true;
+            }
+
+        }
+        for(int i = 0; i<fileInfo.numberAudioStreams; i++){
+            AudioStreamInfo info;
+            if(!v->getAudioStreamInfo(i,info))
+                continue;
+
+            if(newAudioTrack){
+                timelineModel->addClip(trackIndex.row(),pos,0,videoframes,v,i,MediaType::AUDIO);
+                break;
+            }else if(timelineModel->data(trackIndex,TimelineModel::TrackTypeRole).value<MediaType>()!=MediaType::AUDIO){
+                bool found = false;
+                for(int j = trackIndex.row() + 1; j<model()->rowCount();j++){
+                    if(found)
+                        break;
+                    trackIndex = model()->index(j,0);
+                    if(timelineModel->data(trackIndex,TimelineModel::TrackTypeRole).value<MediaType>()==MediaType::AUDIO)
+                        found = true;
+                }
+                if(!found){
+                    trackIndex = timelineModel->createFakeIndex();
+                    timelineModel->addClip(trackIndex.row()+1,pos,0,videoframes,v,i,MediaType::AUDIO);
+                }
+            }else{
+                timelineModel->addClip(trackIndex.row(),pos,0,videoframes,v,i,MediaType::AUDIO);
+
+            }
+
+            break;
+        }
+        //timelineModel->addClip(trackIndex.row(),pos,0,30);
 
         viewport()->update();
 

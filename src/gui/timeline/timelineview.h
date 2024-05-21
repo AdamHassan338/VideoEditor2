@@ -35,6 +35,8 @@ public:
 
 private:
 
+    QString dropFilePath;
+
     std::unordered_map<quint64,Clip*> clipMap;
     Clip* getClipFromMap(quint64 id) const{
         const auto clipIter = clipMap.find(id);

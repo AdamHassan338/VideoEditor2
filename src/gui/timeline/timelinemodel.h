@@ -13,7 +13,7 @@ class TimelineModel : public QAbstractItemModel
 public:
     TimelineModel();
 
-    void addClip(int trackIndex, int pos, int in, int out);
+    void addClip(int trackIndex, int pos, int in, int out,Video* video,int streamIndex,MediaType type);
     void deleteClip(QModelIndex clipIndex);
 
     int moveClipToTrack(QModelIndex clipIndex,QModelIndex newTrackIndex);

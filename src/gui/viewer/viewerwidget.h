@@ -2,6 +2,9 @@
 #define VIEWERWIDGET_H
 
 #include <QWidget>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+
 class QPushButton;
 class QPixmap;
 class QLabel;
@@ -21,6 +24,8 @@ private:
     QPushButton* m_playButton;
     int m_srcWidth = 1920;
     int m_srcHeight = 1080;
+    QHBoxLayout *viewerlayout;
+    QVBoxLayout* layout;
 
     void scalePixmap();
 

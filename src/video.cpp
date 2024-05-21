@@ -299,12 +299,40 @@ bool Video::getAudioStreamInfo(int streamIndex, AudioStreamInfo &info)
     return true;
 }
 
+bool Video::getVideoStreamInfo(int streamIndex, VideoStreamInfo &info)
+{
+    int trueIndex =  videoStreamIndexes[streamIndex];
+    AVStream* stream = formatContext->streams[trueIndex];
+    if(!stream){
+        qDebug()<<"invalid stream index";
+        return false;
+    }
+    AVCodecContext* codecCtx = codecContexts[streamIndexes[videoStreamIndexes[streamIndex]]];
+    info.frameRate = stream->avg_frame_rate.num;
+    info.width = codecCtx->width;
+    info.height = codecCtx->height;
+    info.pixFmt = codecCtx->pix_fmt;
+    info.frameCount = stream->nb_frames;
+
+    return true;
+}
+
+bool Video::getVideoFileInfo(VideoFileInfo &info)
+{
+    if(!formatContext)
+        return false;
+    info.numberStreams = formatContext->nb_streams;
+    info.numberAudioStreams = numAudioStreams;
+    info.numberVideoStreams = numVideoStreams;
+    return true;
+}
+
 quint64 Video::assignStreamId(int streamIndex, AVFormatContext *format){
     AVCodecParameters* params = format->streams[streamIndex]->codecpar;
     AVMediaType type = params->codec_type;
     if(type==AVMEDIA_TYPE_VIDEO){
 
-        numVidesStreams++;
+        numVideoStreams++;
         videoStreamIndexes.push_back(streamIndex);
 
     }else if(type==AVMEDIA_TYPE_AUDIO){
