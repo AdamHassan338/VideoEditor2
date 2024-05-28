@@ -56,6 +56,20 @@ void ViewerWidget::setSrcRes(int width, int height)
     m_srcHeight = height;
 }
 
+void ViewerWidget::setImage(VideoFrame frame)
+{
+    QPixmap surface = m_label->pixmap();
+    QImage img;
+    if(frame.height!=-1)
+         img = QImage((uchar*)frame.frameData, frame.width, frame.height, QImage::Format_RGBA8888);
+    else{
+        img = QImage(m_label->pixmap().width(), m_label->pixmap().height(), QImage::Format_RGBA8888);
+        img.fill(Qt::black);
+    }
+    QImage scaled = img.scaled(surface.width(),surface.height(), Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
+    m_label->setPixmap(QPixmap::fromImage(scaled));
+}
+
 void ViewerWidget::scalePixmap()
 {
     int width = size().width();

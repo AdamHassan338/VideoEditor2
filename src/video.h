@@ -1,3 +1,5 @@
+#ifndef VIDEO_H
+#define VIDEO_H
 #include <stdio.h>
 extern "C"{
 #include <libavcodec/avcodec.h>
@@ -146,3 +148,5 @@ private:
     quint64 assignStreamId(int streamIndex,AVFormatContext* format);
 
 };
+
+#endif // VIDEO_H

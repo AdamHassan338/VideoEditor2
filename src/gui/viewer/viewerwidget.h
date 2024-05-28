@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include "video.h"
 
 class QPushButton;
 class QPixmap;
@@ -17,6 +18,9 @@ public:
     void setSrcRes(int width, int height);
 
 signals:
+
+public slots:
+    void setImage(VideoFrame frame);
 
 private:
     QLabel* m_label;

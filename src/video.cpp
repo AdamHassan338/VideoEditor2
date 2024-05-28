@@ -1,6 +1,6 @@
 #include "video.h"
 #include <math.h>
-
+#include <thread>
 const char* av_make_error(int errnum) {
     static char str[AV_ERROR_MAX_STRING_SIZE];
     memset(str, 0, sizeof(str));
@@ -56,21 +56,17 @@ bool Video::decodeVideo(int streamIndex, uint64_t frameNumber, VideoFrame &video
     AVStream* stream = formatContext->streams[videoStreamIndexes[streamIndex]];
     double framerate = stream->avg_frame_rate.num / stream->avg_frame_rate.den;
     int64_t pts = (int64_t)((double)frameNumber * (double)stream->time_base.den / (double)((double)framerate * (double)stream->time_base.num));
+
     qDebug()<<"seek for " << pts;
     qDebug()<<"seek for adjusted" << pts + stream->start_time;
     streamIndex = videoStreamIndexes[streamIndex];
-    //pts = frameNumber/(av_q2d(formatContext->streams[streamIndex]->time_base) * framerate);
-    //pts =  frameNumber * 10000000.0/av_q2d(formatContext->streams[streamIndex]->avg_frame_rate);
-    //if(frameNumber<frameCount/2)
-      //  av_seek_frame(formatContext,streamIndex,pts, AVSEEK_FLAG_FRAME | AVSEEK_FLAG_ANY);
-    //else
+
     AVCodecContext* codecCtx = codecContexts[streamIndexes[packet->stream_index]];
 
     qDebug() << "starting at " <<stream->start_time;
     pts += stream->start_time;
-    av_seek_frame(formatContext,streamIndex,pts, AVSEEK_FLAG_BACKWARD);
-
     avcodec_flush_buffers(codecCtx);
+    av_seek_frame(formatContext, streamIndex, pts, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
 
 
 
@@ -99,29 +95,15 @@ bool Video::decodeVideo(int streamIndex, uint64_t frameNumber, VideoFrame &video
 
         responce = avcodec_receive_frame(codecCtx,frame);
         if(responce == AVERROR(EAGAIN) || responce == AVERROR(EOF)){
+            if(responce == AVERROR(EOF) ){
+                avcodec_send_packet(codecCtx, nullptr);
+                continue;
+            }
             av_packet_unref(packet);
             av_frame_unref(frame);
             continue;
         }
         qDebug("Frame PTS: %lu", frame->pts);
-
-
-        // Get frame pts
-        uint64_t current_pts = frame->best_effort_timestamp == AV_NOPTS_VALUE ? frame->pts : frame->best_effort_timestamp;
-
-        /*if (current_pts == AV_NOPTS_VALUE) {
-            av_frame_unref(frame);
-            continue;
-        }
-        if (current_pts == AV_NOPTS_VALUE) {
-            qDebug("Frame without PTS, skipping");
-            av_frame_unref(frame);
-            continue;
-        }*/
-        /*if ((current_pts>pts)) {
-            av_frame_unref(frame);
-            continue;
-        }*/
 
 
         if (frame->pts ==pts) {
@@ -142,8 +124,7 @@ bool Video::decodeVideo(int streamIndex, uint64_t frameNumber, VideoFrame &video
             break;
 
 
-        //av_packet_unref(packet);
-        //break;
+        av_packet_unref(packet);
 
     }
 
@@ -174,6 +155,7 @@ bool Video::decodeVideo(int streamIndex, uint64_t frameNumber, VideoFrame &video
 
     //convert YUV data to RGBA
     /* TO DO */
+     /* Higher bitdepth videos */
 
     uint8_t* frameBuffer = new uint8_t [frame->width * frame->height * 4 ]; //multiply by 4 for the 4 channels R G B A
     uint8_t* output[4] = {frameBuffer,NULL,NULL,NULL};
@@ -346,9 +328,18 @@ quint64 Video::assignStreamId(int streamIndex, AVFormatContext *format){
 
     AVCodecContext* codecCtx;
 
+
+
     AVCodec* codec = const_cast<AVCodec*>(avcodec_find_decoder(params->codec_id));
     codecCtx = avcodec_alloc_context3(codec);
     avcodec_parameters_to_context(codecCtx,params);
+    codecCtx->thread_count = std::thread::hardware_concurrency();
+    if (codec->capabilities & AV_CODEC_CAP_FRAME_THREADS)
+        codecCtx->thread_type = FF_THREAD_FRAME;
+    else if (codec->capabilities & AV_CODEC_CAP_SLICE_THREADS)
+        codecCtx->thread_type = FF_THREAD_SLICE;
+    else
+        codecCtx->thread_count = 1;
     avcodec_open2(codecCtx,codec,NULL);
     quint64 id = nextId++;
     codecContexts[id] = codecCtx;

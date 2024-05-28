@@ -1,5 +1,6 @@
 #include "timelinewidget.h"
 #include <QHBoxLayout>
+#include "video.h"
 
 TimelineWidget::TimelineWidget(QWidget *parent)
     : QFrame(parent)
@@ -51,6 +52,8 @@ TimelineWidget::TimelineWidget(QWidget *parent)
     QObject::connect(model,&TimelineModel::tracksChanged,tracklist,&TracklistView::updateViewport);
 
 
+    QObject::connect(model,&TimelineModel::underPlayhead,this,&TimelineWidget::getFrames);
+
 }
 
 TimelineWidget::~TimelineWidget()
@@ -58,8 +61,22 @@ TimelineWidget::~TimelineWidget()
 
 }
 
-void TimelineWidget::getFrames(std::vector<std::pair<const ClipModel *, int> >)
+void TimelineWidget::getFrames(std::vector<std::pair<const ClipModel *, int>> clipItems)
 {
+    VideoFrame frame;
+    for(std::pair<const ClipModel *, int> &item : clipItems){
+        if(item.first->type()!= MediaType::VIDEO)
+            continue;
+        item.first->video()->decodeVideo(item.first->streamIndex(),item.second,frame);
+        if(frame.height!=-1)
+            break;
+    }
+
+    //if(frame.height==-1)
+        //return;
+    emit newImage(frame);
+    return;
+
  /* TO DO */
 }
 

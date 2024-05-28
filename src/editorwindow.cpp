@@ -21,4 +21,6 @@ EditorWindow::EditorWindow(QWidget *parent)
     centralWidget->setLayout(layout);
     layout->addWidget(splitter);
 
+    QObject::connect(m_timelineWidget,&TimelineWidget::newImage,m_viewerWidegt,&ViewerWidget::setImage);
+
 }

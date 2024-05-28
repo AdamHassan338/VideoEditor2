@@ -56,6 +56,8 @@ public:
 
     Video *video() const;
 
+    int streamIndex() const;
+
 private:
     TrackModel* m_parent;
     MediaType m_type;

@@ -1,7 +1,7 @@
 #include "clipmodel.h"
 #include "video.h"
 
-ClipModel::ClipModel(int pos, int in, int out,Video* video,int streamIndex, TrackModel* parent,MediaType type) : m_pos(pos),m_in(in),m_out(out), m_parent(parent),m_length(out),m_type(type)
+ClipModel::ClipModel(int pos, int in, int out,Video* video,int streamIndex, TrackModel* parent,MediaType type) : m_pos(pos),m_in(in),m_out(out), m_video(video), m_streamIndex(streamIndex), m_parent(parent),m_length(out),m_type(type)
 {
 
 }
@@ -54,4 +54,9 @@ MediaType ClipModel::type() const
 Video *ClipModel::video() const
 {
     return m_video;
+}
+
+int ClipModel::streamIndex() const
+{
+    return m_streamIndex;
 }

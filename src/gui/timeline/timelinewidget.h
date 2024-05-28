@@ -10,6 +10,8 @@
 #include "timelineview.h"
 #include "tracklistview.h"
 #include "types.h"
+#include "video.h"
+
 
 class TimelineWidget : public QFrame
 {
@@ -20,9 +22,10 @@ public:
     ~TimelineWidget();
 
 signals:
+    void newImage(VideoFrame frame);
 
 public slots:
-    void getFrames(std::vector<std::pair<const ClipModel*, int>>);
+    void getFrames(std::vector<std::pair<const ClipModel*, int>> clipItems);
 
 private:
     TimelineView* m_timelineView;
