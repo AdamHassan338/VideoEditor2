@@ -858,7 +858,8 @@ void TimelineView::dropEvent(QDropEvent *event)
             break;
         }
         //timelineModel->addClip(trackIndex.row(),pos,0,30);
-
+        timelineModel->reCalculateLength();
+        updateScrollBars();
         viewport()->update();
 
     }else{

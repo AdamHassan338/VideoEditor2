@@ -30,6 +30,7 @@ private:
     int m_srcHeight = 1080;
     QHBoxLayout *viewerlayout;
     QVBoxLayout* layout;
+    QImage m_lastImage;
 
     void scalePixmap();
 

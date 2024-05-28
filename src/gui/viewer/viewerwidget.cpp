@@ -18,6 +18,7 @@ ViewerWidget::ViewerWidget(QWidget *parent)
 
     QImage img(parent->height(),parent->height(),QImage::Format_RGB888);
     img.fill(Qt::black);
+    m_lastImage = img;
     QPixmap pixmap =  QPixmap::fromImage(img);
     m_label->setPixmap(pixmap);
 
@@ -66,6 +67,7 @@ void ViewerWidget::setImage(VideoFrame frame)
         img = QImage(m_label->pixmap().width(), m_label->pixmap().height(), QImage::Format_RGBA8888);
         img.fill(Qt::black);
     }
+    m_lastImage = img;
     QImage scaled = img.scaled(surface.width(),surface.height(), Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
     m_label->setPixmap(QPixmap::fromImage(scaled));
 }
@@ -79,9 +81,10 @@ void ViewerWidget::scalePixmap()
     double scale = width>height ? scaleHeight : scaleWidth;
     height = scale* m_srcHeight;
     width = scale * m_srcWidth;
-    QImage img(width, height, QImage::Format_RGB888);
-    img.fill(Qt::black);
-    QPixmap pixmap = QPixmap::fromImage(img);
+
+    QImage scaled = m_lastImage.scaled(width,height, Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
+
+    QPixmap pixmap = QPixmap::fromImage(scaled);
     m_label->setPixmap(pixmap);
     qDebug()<< "width: " << width << " Height: " << height;
     qDebug() << m_label->rect();
