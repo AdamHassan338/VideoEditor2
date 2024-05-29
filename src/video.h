@@ -104,7 +104,7 @@ public:
     bool open();
 
     bool decodeVideo(int streamIndex,uint64_t frameNumber, VideoFrame& videoFrame);
-    std::vector<AudioFrame> decodeAudio(int streamIndex, int frameNnumber, AudioFrame& audioFrame);
+    std::vector<AudioFrame> decodeAudio(int streamIndex, int frameNnumber, std::vector<AudioFrame> &audioFrames);
     bool getAudioStreamInfo(int streamIndex,AudioStreamInfo& info);
     bool getVideoStreamInfo(int streamIndex,VideoStreamInfo& info);
     bool getVideoFileInfo(VideoFileInfo& info);

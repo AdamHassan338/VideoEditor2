@@ -1,6 +1,9 @@
 #include "editorwindow.h"
 #include <QVBoxLayout>
 #include <QSplitter>
+#include <QIODevice>
+#include <QAudioSink>
+#include <QAudioSource>
 
 EditorWindow::EditorWindow(QWidget *parent)
     : QMainWindow{parent}
@@ -21,6 +24,25 @@ EditorWindow::EditorWindow(QWidget *parent)
     centralWidget->setLayout(layout);
     layout->addWidget(splitter);
 
+
+
+    QAudioFormat format;
+    format.setSampleRate(44100);
+    format.setChannelCount(2);
+    format.setSampleFormat(QAudioFormat::Float);
+
+
+    m_audioSink = new QAudioSink(format,nullptr);
+    m_audioOutput = m_audioSink->start();
+
     QObject::connect(m_timelineWidget,&TimelineWidget::newImage,m_viewerWidegt,&ViewerWidget::setImage);
+    QObject::connect(m_timelineWidget,&TimelineWidget::newAudioFrame,this,&EditorWindow::writeToAudioSink);
+
+}
+
+void EditorWindow::writeToAudioSink(std::vector<AudioFrame> frames)
+{
+    for(AudioFrame &frame: frames)
+        m_audioOutput->write(reinterpret_cast<char*>(frame.frameData), frame.frameSize);
 
 }

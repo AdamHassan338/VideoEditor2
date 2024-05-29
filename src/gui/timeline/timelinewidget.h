@@ -23,6 +23,7 @@ public:
 
 signals:
     void newImage(VideoFrame frame);
+    void newAudioFrame(std::vector<AudioFrame> audioFrames);
 
 public slots:
     void getFrames(std::vector<std::pair<const ClipModel*, int>> clipItems);

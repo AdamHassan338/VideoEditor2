@@ -63,18 +63,22 @@ TimelineWidget::~TimelineWidget()
 
 void TimelineWidget::getFrames(std::vector<std::pair<const ClipModel *, int>> clipItems)
 {
-    VideoFrame frame;
+    VideoFrame videoFrame;
+    std::vector<AudioFrame> audioFrames;
     for(std::pair<const ClipModel *, int> &item : clipItems){
-        if(item.first->type()!= MediaType::VIDEO)
-            continue;
-        item.first->video()->decodeVideo(item.first->streamIndex(),item.second,frame);
-        if(frame.height!=-1)
+        if(item.first->type()== MediaType::VIDEO)
+        item.first->video()->decodeVideo(item.first->streamIndex(),item.second,videoFrame);
+        if(item.first->type()== MediaType::AUDIO)
+            item.first->video()->decodeAudio(item.first->streamIndex(),item.second,audioFrames);
+
+        if(videoFrame.height!=-1 && audioFrames.size()>0)
             break;
     }
 
     //if(frame.height==-1)
         //return;
-    emit newImage(frame);
+    emit newImage(videoFrame);
+    emit newAudioFrame(audioFrames);
     return;
 
  /* TO DO */

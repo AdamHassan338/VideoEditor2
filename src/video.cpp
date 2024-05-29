@@ -174,8 +174,8 @@ bool Video::decodeVideo(int streamIndex, uint64_t frameNumber, VideoFrame &video
     return true;
 }
 
-std::vector<AudioFrame> Video::decodeAudio(int streamIndex, int frameNnumber, AudioFrame &audio){
-    std::vector<AudioFrame> list;
+std::vector<AudioFrame> Video::decodeAudio(int streamIndex, int frameNnumber, std::vector<AudioFrame> &audioFrames){
+
     AVCodecContext* codecCtx = codecContexts[audioStreamIndexes[streamIndex]];
     streamIndex = audioStreamIndexes[streamIndex];
     AVStream* stream = formatContext->streams[videoStreamIndexes[0]];
@@ -209,7 +209,7 @@ std::vector<AudioFrame> Video::decodeAudio(int streamIndex, int frameNnumber, Au
             //qDebug()<< "packet pts: " << packet->pts;
 
             av_packet_unref(packet);
-            return list;
+            return audioFrames;
         }
 
         //codecCtx = codecContexts[streamIndexes[packet->stream_index]];
@@ -218,7 +218,7 @@ std::vector<AudioFrame> Video::decodeAudio(int streamIndex, int frameNnumber, Au
         responce = avcodec_send_packet(codecCtx,packet);
         if(responce<0){
             qDebug("Failed to decode packet\n");
-            return list;
+            return audioFrames;
         }
 
         responce = avcodec_receive_frame(codecCtx,frame);
@@ -255,13 +255,13 @@ std::vector<AudioFrame> Video::decodeAudio(int streamIndex, int frameNnumber, Au
         AudioFrame audioFrame;
         audioFrame.frameData= output_buffer;
         audioFrame.frameSize = output_buffer_size;
-        list.push_back(audioFrame);
+        audioFrames.push_back(audioFrame);
 
 
 
     }
 
-    return list;
+    return audioFrames;
 }
 
 bool Video::getAudioStreamInfo(int streamIndex, AudioStreamInfo &info)
