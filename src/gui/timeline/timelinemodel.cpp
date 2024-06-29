@@ -287,6 +287,8 @@ int TimelineModel::getPlayheadPos() const
 
 void TimelineModel::setPlayheadPos(int newPlayheadPos)
 {
+    if(m_playheadPos == newPlayheadPos)
+        return;
     m_playheadPos = newPlayheadPos;
 
     emit playheadMoved(newPlayheadPos);
@@ -638,6 +640,8 @@ bool TimelineModel::setData(const QModelIndex &index, const QVariant &value, int
     switch (role){
     case ClipInRole:
         clip = (ClipModel*)FromID(index.internalId());
+        if(clip->in() == value.toInt())
+            return true;
         clip->setIn(value.toInt());
         emit timelineUpdated();
         emit underPlayhead(getUnderPlayhead());
@@ -645,6 +649,8 @@ bool TimelineModel::setData(const QModelIndex &index, const QVariant &value, int
         break;
     case ClipOutRole:
         clip = (ClipModel*)FromID(index.internalId());
+        if(clip->out() == value.toInt())
+            return true;
         clip->setOut(value.toInt());
         emit timelineUpdated();
         emit underPlayhead(getUnderPlayhead());
@@ -653,6 +659,8 @@ bool TimelineModel::setData(const QModelIndex &index, const QVariant &value, int
         break;
     case ClipPosRole:
         clip = (ClipModel*)FromID(index.internalId());
+        if(clip->pos() == value.toInt())
+            return true;
         clip->setPos(value.toInt());
         emit timelineUpdated();
         emit underPlayhead(getUnderPlayhead());

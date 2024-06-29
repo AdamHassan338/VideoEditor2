@@ -70,9 +70,6 @@ void TimelineWidget::getFrames(std::vector<std::pair<const ClipModel *, int>> cl
         item.first->video()->decodeVideo(item.first->streamIndex(),item.second,videoFrame);
         if(item.first->type()== MediaType::AUDIO)
             item.first->video()->decodeAudio(item.first->streamIndex(),item.second,audioFrames);
-
-        if(videoFrame.height!=-1 && audioFrames.size()>0)
-            break;
     }
 
     //if(frame.height==-1)

@@ -51,7 +51,7 @@ bool Video::open(){
     return true;
 }
 
-bool Video::decodeVideo(int streamIndex, uint64_t frameNumber, VideoFrame &videoFrame){
+bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoFrame){
 
     AVStream* stream = formatContext->streams[videoStreamIndexes[streamIndex]];
     double framerate = stream->avg_frame_rate.num / stream->avg_frame_rate.den;
@@ -180,8 +180,8 @@ std::vector<AudioFrame> Video::decodeAudio(int streamIndex, int frameNnumber, st
     streamIndex = audioStreamIndexes[streamIndex];
     AVStream* stream = formatContext->streams[videoStreamIndexes[0]];
     double framerate = stream->avg_frame_rate.num / stream->avg_frame_rate.den;
-    uint64_t pts = codecCtx->sample_rate * frameNnumber /framerate;
-    uint64_t nextpts = codecCtx->sample_rate * (frameNnumber+1) /framerate;
+    int64_t pts = codecCtx->sample_rate * frameNnumber /framerate;
+    int64_t nextpts = codecCtx->sample_rate * (frameNnumber+1) /framerate;
 
     //qDebug() << "frame: " << frameNnumber <<" pts: " <<pts <<" NextPts: " <<nextpts;
     av_seek_frame(formatContext,streamIndex,pts, AVSEEK_FLAG_BACKWARD);
@@ -250,12 +250,14 @@ std::vector<AudioFrame> Video::decodeAudio(int streamIndex, int frameNnumber, st
 
         swr_convert(sampler,&output_buffer,dst_nb_samples,(const uint8_t **)frame->data,src_nb_samples);
 
-        av_packet_unref(packet);
-        av_frame_unref(frame);
         AudioFrame audioFrame;
         audioFrame.frameData= output_buffer;
         audioFrame.frameSize = output_buffer_size;
+        audioFrame.pts = frame->pts;
         audioFrames.push_back(audioFrame);
+
+        av_packet_unref(packet);
+        av_frame_unref(frame);
 
 
 

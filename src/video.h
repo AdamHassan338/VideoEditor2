@@ -36,9 +36,11 @@ struct VideoFrame{
 struct AudioFrame{
     uint8_t* frameData;
     int frameSize;
+    int64_t pts;
     AudioFrame(){
         frameData = NULL;
         frameSize = -1;
+        pts=-1;
     }
     AudioFrame(uint8_t* data,int size) : frameData(data), frameSize(size){
 
@@ -103,7 +105,7 @@ public:
 
     bool open();
 
-    bool decodeVideo(int streamIndex,uint64_t frameNumber, VideoFrame& videoFrame);
+    bool decodeVideo(int streamIndex,int64_t frameNumber, VideoFrame& videoFrame);
     std::vector<AudioFrame> decodeAudio(int streamIndex, int frameNnumber, std::vector<AudioFrame> &audioFrames);
     bool getAudioStreamInfo(int streamIndex,AudioStreamInfo& info);
     bool getVideoStreamInfo(int streamIndex,VideoStreamInfo& info);
