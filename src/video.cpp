@@ -61,7 +61,7 @@ bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoF
     //qDebug()<<"seek for adjusted" << pts + stream->start_time;
     streamIndex = videoStreamIndexes[streamIndex];
 
-    AVCodecContext* codecCtx = codecContexts[streamIndexes[packet->stream_index]];
+    AVCodecContext* codecCtx = codecContexts[streamIndex];
 
     //qDebug() << "starting at " <<stream->start_time;
     pts += stream->start_time;
@@ -277,7 +277,7 @@ bool Video::isAudioBuffered(int streamIndex, int frameNumber){
     AVStream* stream = formatContext->streams[videoStreamIndexes[0]];
     const AVRational &timebase = stream->time_base;
     double framerate = stream->avg_frame_rate.num / stream->avg_frame_rate.den;
-
+    stream = formatContext->streams[streamIndex];
     int64_t pts = (frameNumber /framerate) * stream->time_base.den/stream->time_base.num;
     stream = formatContext->streams[streamIndex];
     uint64_t startPTS = m_audioBuffer.startTime * stream->time_base.den/stream->time_base.num;

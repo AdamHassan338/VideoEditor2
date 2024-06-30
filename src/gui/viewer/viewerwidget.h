@@ -31,6 +31,7 @@ private:
     QHBoxLayout *viewerlayout;
     QVBoxLayout* layout;
     QImage m_lastImage;
+    VideoFrame lastFrame;
 
     void scalePixmap();
 

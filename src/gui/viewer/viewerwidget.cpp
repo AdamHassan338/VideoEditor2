@@ -59,6 +59,8 @@ void ViewerWidget::setSrcRes(int width, int height)
 
 void ViewerWidget::setImage(VideoFrame frame)
 {
+    lastFrame.clean();
+
     QPixmap surface = m_label->pixmap();
     QImage img;
     if(frame.height!=-1)
@@ -70,7 +72,7 @@ void ViewerWidget::setImage(VideoFrame frame)
     m_lastImage = img;
     QImage scaled = img.scaled(surface.width(),surface.height(), Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
     m_label->setPixmap(QPixmap::fromImage(scaled));
-    frame.clean();
+    lastFrame=frame;
 }
 
 void ViewerWidget::scalePixmap()

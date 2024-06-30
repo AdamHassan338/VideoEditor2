@@ -33,16 +33,21 @@ EditorWindow::EditorWindow(QWidget *parent)
 
 
     m_audioSink = new QAudioSink(format,this);
-    m_audioOutput = m_audioSink->start();
+    //m_audioOutput = m_audioSink->start();
 
     QObject::connect(m_timelineWidget,&TimelineWidget::newImage,m_viewerWidegt,&ViewerWidget::setImage);
     QObject::connect(m_timelineWidget,&TimelineWidget::newAudioFrame,this,&EditorWindow::writeToAudioSink);
-
+    QObject::connect(&m_timer,&QTimer::timeout,this,[&]() {
+            m_audioSink->stop();
+        });
 
 }
 
 void EditorWindow::writeToAudioSink(Audio audio)
-{
+{   if(m_audioSink->state()==QAudio::StoppedState)
+        m_audioOutput = m_audioSink->start();
     m_audioOutput->write(reinterpret_cast<char*>(audio.data), audio.size);
+
     audio.clean();
+    m_timer.start(200);
 }

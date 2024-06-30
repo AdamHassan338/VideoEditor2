@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include "timelinewidget.h"
 #include "viewerwidget.h"
+#include <QTimer>
 
 class QAudioSink;
 class QIODevice;
@@ -23,6 +24,7 @@ private:
 
     QAudioSink *m_audioSink;
     QIODevice *m_audioOutput;
+    QTimer m_timer;
 
 };
 
