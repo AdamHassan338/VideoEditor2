@@ -32,17 +32,17 @@ EditorWindow::EditorWindow(QWidget *parent)
     format.setSampleFormat(QAudioFormat::Float);
 
 
-    m_audioSink = new QAudioSink(format,nullptr);
+    m_audioSink = new QAudioSink(format,this);
     m_audioOutput = m_audioSink->start();
 
     QObject::connect(m_timelineWidget,&TimelineWidget::newImage,m_viewerWidegt,&ViewerWidget::setImage);
     QObject::connect(m_timelineWidget,&TimelineWidget::newAudioFrame,this,&EditorWindow::writeToAudioSink);
 
+
 }
 
-void EditorWindow::writeToAudioSink(std::vector<AudioFrame> frames)
+void EditorWindow::writeToAudioSink(Audio audio)
 {
-    for(AudioFrame &frame: frames)
-        m_audioOutput->write(reinterpret_cast<char*>(frame.frameData), frame.frameSize);
-
+    m_audioOutput->write(reinterpret_cast<char*>(audio.data), audio.size);
+    audio.clean();
 }

@@ -318,11 +318,11 @@ QModelIndex TimelineView::indexAt(const QPoint &point) const{
 
             }
 
-            qDebug()<< "IndexAt Track: " << i;
+            //qDebug()<< "IndexAt Track: " << i;
             return index;
         }
     }
-    qDebug()<< "IndexAt Track: " << -1;
+    //qDebug()<< "IndexAt Track: " << -1;
     index = ((TimelineModel*)model())->createFakeIndex();
     if(!index.isValid()){
         qDebug()<<"dont worry still invalid";
@@ -658,13 +658,15 @@ void TimelineView::keyPressEvent(QKeyEvent *event)
     case Qt::Key_Right:
         if(list.isEmpty())
             movePlayheadToFrame(timelinemodel->getPlayheadPos()+1);
-        moveSelectedClip(1,0,false);
+        else
+            moveSelectedClip(1,0,false);
         viewport()->update();
         break;
     case Qt::Key_Left:
         if(list.isEmpty())
             movePlayheadToFrame(timelinemodel->getPlayheadPos()-1);
-        moveSelectedClip(-1,0,false);
+        else
+            moveSelectedClip(-1,0,false);
         viewport()->update();
         break;
     case Qt::Key_Down :

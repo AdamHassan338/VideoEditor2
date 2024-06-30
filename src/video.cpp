@@ -57,13 +57,13 @@ bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoF
     double framerate = stream->avg_frame_rate.num / stream->avg_frame_rate.den;
     int64_t pts = (int64_t)((double)frameNumber * (double)stream->time_base.den / (double)((double)framerate * (double)stream->time_base.num));
 
-    qDebug()<<"seek for " << pts;
-    qDebug()<<"seek for adjusted" << pts + stream->start_time;
+    //qDebug()<<"seek for " << pts;
+    //qDebug()<<"seek for adjusted" << pts + stream->start_time;
     streamIndex = videoStreamIndexes[streamIndex];
 
     AVCodecContext* codecCtx = codecContexts[streamIndexes[packet->stream_index]];
 
-    qDebug() << "starting at " <<stream->start_time;
+    //qDebug() << "starting at " <<stream->start_time;
     pts += stream->start_time;
     avcodec_flush_buffers(codecCtx);
     av_seek_frame(formatContext, streamIndex, pts, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
@@ -103,13 +103,13 @@ bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoF
             av_frame_unref(frame);
             continue;
         }
-        qDebug("Frame PTS: %lu", frame->pts);
+        //qDebug("Frame PTS: %lu", frame->pts);
 
 
         if (frame->pts ==pts) {
             found = true;
             av_packet_unref(packet);
-            qDebug()<<"break A";
+            //qDebug()<<"break A";
             break;
         }
 
@@ -174,18 +174,20 @@ bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoF
     return true;
 }
 
-std::vector<AudioFrame> Video::decodeAudio(int streamIndex, int frameNnumber, std::vector<AudioFrame> &audioFrames){
+std::vector<AudioFrame> Video::decodeAudio(int streamIndex, int startTime, std::vector<AudioFrame> &audioFrames){
 
     AVCodecContext* codecCtx = codecContexts[audioStreamIndexes[streamIndex]];
     streamIndex = audioStreamIndexes[streamIndex];
-    AVStream* stream = formatContext->streams[videoStreamIndexes[0]];
-    double framerate = stream->avg_frame_rate.num / stream->avg_frame_rate.den;
-    int64_t pts = codecCtx->sample_rate * frameNnumber /framerate;
-    int64_t nextpts = codecCtx->sample_rate * (frameNnumber+1) /framerate;
+    AVStream* stream = formatContext->streams[streamIndex];
 
-    //qDebug() << "frame: " << frameNnumber <<" pts: " <<pts <<" NextPts: " <<nextpts;
+
+    int64_t pts = (startTime-m_bufferPaddingTime) * stream->time_base.den/stream->time_base.num;
+    if(pts<0)
+        pts=0;
+    int64_t nextpts = (startTime+ m_bufferTime + m_bufferPaddingTime) * stream->time_base.den/stream->time_base.num;
+
     av_seek_frame(formatContext,streamIndex,pts, AVSEEK_FLAG_BACKWARD);
-    //avcodec_flush_buffers(codecCtx);
+    avcodec_flush_buffers(codecCtx);
 
     int responce;
     bool found = false;
@@ -196,20 +198,6 @@ std::vector<AudioFrame> Video::decodeAudio(int streamIndex, int frameNnumber, st
         if (packet->stream_index != streamIndex ){
             av_packet_unref(packet);
             continue;
-        }
-        if(packet->pts<pts){
-            //qDebug()<< "packet pts: " << packet->pts;
-
-            av_packet_unref(packet);
-
-            //av_frame_unref(frame);
-            continue;
-        }
-        if(packet->pts>=nextpts){
-            //qDebug()<< "packet pts: " << packet->pts;
-
-            av_packet_unref(packet);
-            return audioFrames;
         }
 
         //codecCtx = codecContexts[streamIndexes[packet->stream_index]];
@@ -228,6 +216,24 @@ std::vector<AudioFrame> Video::decodeAudio(int streamIndex, int frameNnumber, st
             av_packet_unref(packet);
             continue;
         }
+
+
+        if(frame->pts<pts){
+            //qDebug()<< "packet pts: " << packet->pts;
+
+            av_packet_unref(packet);
+
+            av_frame_unref(frame);
+            continue;
+        }
+        if(frame->pts>nextpts){
+            //qDebug()<< "packet pts: " << packet->pts;
+
+            av_packet_unref(packet);
+            av_frame_unref(frame);
+            return audioFrames;
+        }
+
 
 
 
@@ -264,6 +270,72 @@ std::vector<AudioFrame> Video::decodeAudio(int streamIndex, int frameNnumber, st
     }
 
     return audioFrames;
+}
+
+bool Video::isAudioBuffered(int streamIndex, int frameNumber){
+    streamIndex = audioStreamIndexes[streamIndex];
+    AVStream* stream = formatContext->streams[videoStreamIndexes[0]];
+    const AVRational &timebase = stream->time_base;
+    double framerate = stream->avg_frame_rate.num / stream->avg_frame_rate.den;
+
+    int64_t pts = (frameNumber /framerate) * stream->time_base.den/stream->time_base.num;
+    stream = formatContext->streams[streamIndex];
+    uint64_t startPTS = m_audioBuffer.startTime * stream->time_base.den/stream->time_base.num;
+    uint64_t endPTS = (m_audioBuffer.endTime) * stream->time_base.den/stream->time_base.num;
+
+    if(pts>=startPTS && pts<= endPTS)
+        return true;
+
+    return false;
+}
+
+void Video::bufferAudio(int streamIndex, int frameNumber){
+    std::vector<AudioFrame> frames;
+
+    m_audioBuffer = AudioBuffer();
+
+    AVStream* stream = formatContext->streams[videoStreamIndexes[0]];
+    double framerate = stream->avg_frame_rate.num / stream->avg_frame_rate.den;
+    int startTime = frameNumber /framerate;
+
+    decodeAudio(streamIndex,startTime,frames);
+
+    m_audioBuffer.startTime = startTime;
+    m_audioBuffer.endTime = startTime + m_bufferTime;
+
+    Video::moveToAudioBuffer(m_audioBuffer,frames,m_bufferPaddingTime);
+
+
+}
+
+void Video::moveToAudioBuffer(AudioBuffer &buffer, std::vector<AudioFrame> &frames, int padding){
+    if(frames.empty())
+        return;
+
+    int bufferSize = 0;
+    buffer.startPTS = frames.cbegin()->pts;
+    buffer.endPTS = frames.cend()->pts;
+
+    for(const AudioFrame &f : frames){
+        buffer.size += f.frameSize;
+    }
+
+    buffer.data = new uint8_t[buffer.size];
+    uint8_t* ptr = buffer.data;
+
+    buffer.frameCount =0;
+
+    for(int i = 0; i<frames.size(); i++){
+        memcpy(ptr,frames[i].frameData,frames[i].frameSize);
+        ptr+=frames[i].frameSize;
+        buffer.frameCount++;
+        frames[i].clean();
+    }
+
+    buffer.paddingFrameCount = padding;
+
+
+
 }
 
 bool Video::getAudioStreamInfo(int streamIndex, AudioStreamInfo &info)
@@ -309,6 +381,41 @@ bool Video::getVideoFileInfo(VideoFileInfo &info)
     info.numberAudioStreams = numAudioStreams;
     info.numberVideoStreams = numVideoStreams;
     return true;
+}
+
+void Video::getAudio(int streamIndex, int64_t frameNumber, Audio &audio){
+
+    if(!isAudioBuffered(streamIndex,frameNumber))
+        bufferAudio(streamIndex,frameNumber);
+
+    AVCodecContext* codecCtx = codecContexts[audioStreamIndexes[streamIndex]];
+    streamIndex = audioStreamIndexes[streamIndex];
+    AVStream* stream = formatContext->streams[videoStreamIndexes[0]];
+    double framerate = stream->avg_frame_rate.num / stream->avg_frame_rate.den;
+
+    AVRational timebase = formatContext->streams[streamIndex]->time_base;
+    int sampleRate = codecCtx->sample_rate;
+    int bytesPerSample = av_get_bytes_per_sample(av_get_packed_sample_fmt(static_cast<AVSampleFormat>(codecCtx->sample_fmt)));
+    double timebaseFactor = double(timebase.den/timebase.num);
+
+    int64_t startPtsOffset = ((double)((double)frameNumber /framerate) * timebaseFactor) - m_audioBuffer.startPTS;
+    int64_t startSampleOffset = (double)((double)startPtsOffset/ timebaseFactor ) *sampleRate ;
+    int64_t startByteOffset = startSampleOffset*2*bytesPerSample;
+
+    int64_t endPtsOffset = ( (double)((double)(frameNumber+1) /framerate) * timebaseFactor) - m_audioBuffer.startPTS ;
+    int64_t endSampleOffset = (double)((double)endPtsOffset/ timebaseFactor) *sampleRate;
+    int64_t endByteOffset = endSampleOffset *2 *bytesPerSample;
+
+    endByteOffset-=startByteOffset;
+
+    if(startByteOffset+endByteOffset>m_audioBuffer.size || startByteOffset<0 || endByteOffset<0)
+        return;
+
+    audio.data = new uint8_t[endByteOffset];
+    audio.size = endByteOffset;
+
+    memcpy(audio.data,m_audioBuffer.data+startByteOffset,endByteOffset);
+
 }
 
 quint64 Video::assignStreamId(int streamIndex, AVFormatContext *format){

@@ -70,6 +70,7 @@ void ViewerWidget::setImage(VideoFrame frame)
     m_lastImage = img;
     QImage scaled = img.scaled(surface.width(),surface.height(), Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
     m_label->setPixmap(QPixmap::fromImage(scaled));
+    frame.clean();
 }
 
 void ViewerWidget::scalePixmap()

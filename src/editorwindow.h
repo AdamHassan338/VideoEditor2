@@ -15,7 +15,7 @@ public:
     explicit EditorWindow(QWidget *parent = nullptr);
 
 public slots:
-    void writeToAudioSink(std::vector<AudioFrame> frames);
+    void writeToAudioSink(Audio audio);
 signals:
 private:
     TimelineWidget* m_timelineWidget;
@@ -23,6 +23,7 @@ private:
 
     QAudioSink *m_audioSink;
     QIODevice *m_audioOutput;
+
 };
 
 #endif // EDITORWINDOW_H

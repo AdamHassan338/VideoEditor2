@@ -31,6 +31,11 @@ struct VideoFrame{
         width = -1;
         height = -1;
     }
+
+    void clean(){
+        if(frameData)
+            delete[] frameData;
+    }
 };
 
 struct AudioFrame{
@@ -44,6 +49,57 @@ struct AudioFrame{
     }
     AudioFrame(uint8_t* data,int size) : frameData(data), frameSize(size){
 
+    }
+
+    void clean(){
+        if(frameData)
+            delete[] frameData;
+    }
+};
+
+struct AudioBuffer{
+    int64_t startPTS;
+    int64_t endPTS;
+    uint8_t* data;
+    uint8_t frameCount;
+    uint8_t paddingFrameCount;
+    int size;
+    int startTime;
+    int endTime;
+
+    AudioBuffer(){
+        data = NULL;
+        startPTS = -1;
+        endPTS  = -1;
+        frameCount = -1;
+        paddingFrameCount = -1;
+        size = -1;
+        startTime=-1;
+        endTime =-1;
+    }
+
+    ~AudioBuffer(){
+        if(data)
+            delete[] data;
+    }
+};
+
+struct Audio{
+    uint8_t* data;
+    int size;
+    int frameNumber;
+    int stream;
+
+    Audio(){
+        data = NULL;
+        size = -1;
+        frameNumber = -1;
+        stream = -1;
+    }
+
+    void clean(){
+        if(data)
+            delete[] data;
     }
 };
 
@@ -106,14 +162,22 @@ public:
     bool open();
 
     bool decodeVideo(int streamIndex,int64_t frameNumber, VideoFrame& videoFrame);
-    std::vector<AudioFrame> decodeAudio(int streamIndex, int frameNnumber, std::vector<AudioFrame> &audioFrames);
     bool getAudioStreamInfo(int streamIndex,AudioStreamInfo& info);
     bool getVideoStreamInfo(int streamIndex,VideoStreamInfo& info);
     bool getVideoFileInfo(VideoFileInfo& info);
 
+    void getAudio(int streamIndex, int64_t frameNumber, Audio& audio);
+
+
+
+
 private:
     const char* m_path;
     const char* m_fileName;
+
+    AudioBuffer m_audioBuffer;
+    int m_bufferTime = 10;
+    int m_bufferPaddingTime = 5;
 
     //video
     int width;
@@ -146,7 +210,13 @@ private:
     //AVBufferRef* hw_device_ctx = nullptr;
 
 
+    std::vector<AudioFrame> decodeAudio(int streamIndex, int startTime, std::vector<AudioFrame> &audioFrames);
 
+    bool isAudioBuffered(int streamIndex, int frameNumber);
+
+    void bufferAudio(int streamIndex,int frameNumber);
+
+    static void moveToAudioBuffer(AudioBuffer &buffer, std::vector<AudioFrame> &frames, int padding);
     quint64 assignStreamId(int streamIndex,AVFormatContext* format);
 
 };

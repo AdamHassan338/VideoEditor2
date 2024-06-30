@@ -6,7 +6,6 @@
 #include <QToolBar>
 
 #include "timelinemodel.h"
-#include "timelinewidget.h"
 #include "timelineview.h"
 #include "tracklistview.h"
 #include "types.h"
@@ -23,7 +22,7 @@ public:
 
 signals:
     void newImage(VideoFrame frame);
-    void newAudioFrame(std::vector<AudioFrame> audioFrames);
+    void newAudioFrame(Audio audio);
 
 public slots:
     void getFrames(std::vector<std::pair<const ClipModel*, int>> clipItems);
