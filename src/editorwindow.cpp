@@ -38,6 +38,7 @@ EditorWindow::EditorWindow(QWidget *parent)
     QObject::connect(m_timelineWidget,&TimelineWidget::newImage,m_viewerWidegt,&ViewerWidget::setImage);
     QObject::connect(m_timelineWidget,&TimelineWidget::newAudioFrame,this,&EditorWindow::writeToAudioSink);
     QObject::connect(&m_timer,&QTimer::timeout,this,[&]() {
+        if(m_audioSink->state()==QAudio::IdleState)
             m_audioSink->stop();
         });
 
