@@ -458,7 +458,9 @@ void TimelineView::addClipToMap(int row, int track){
     int clipIn = this->model()->data(clipIndex,TimelineModel::ClipInRole).toInt();
     int clipOut = this->model()->data(clipIndex,TimelineModel::ClipOutRole).toInt();
     int clipPos = this->model()->data(clipIndex,TimelineModel::ClipPosRole).toInt();
-    Clip* clip = new Clip(clipPos,clipIn,clipOut,track);
+    double srcFrameRate = this->model()->data(clipIndex,TimelineModel::ClipFrameRateRole).toDouble();
+    int srcLength = this->model()->data(clipIndex,TimelineModel::ClipLengthRole).toInt();
+    Clip* clip = new Clip(clipPos,clipIn,clipOut,track,srcLength,srcFrameRate);
 
     clipMap[clipIndex.internalId()] = clip;
 }
@@ -504,7 +506,10 @@ void TimelineView::setModel(QAbstractItemModel *model)
             int clipIn = this->model()->data(clipIndex,TimelineModel::ClipInRole).toInt();
             int clipOut = this->model()->data(clipIndex,TimelineModel::ClipOutRole).toInt();
             int clipPos = this->model()->data(clipIndex,TimelineModel::ClipPosRole).toInt();
-            Clip* clip = new Clip(clipPos,clipIn,clipOut,i);
+
+            double srcFrameRate = this->model()->data(clipIndex,TimelineModel::ClipFrameRateRole).toDouble();
+            int srcLength = this->model()->data(clipIndex,TimelineModel::ClipLengthRole).toInt();
+            Clip* clip = new Clip(clipPos,clipIn,clipOut,i,srcLength,srcFrameRate);
 
             clipMap[clipIndex.internalId()] = clip;
 
@@ -593,7 +598,6 @@ void TimelineView::mouseMoveEvent(QMouseEvent *event)
             moveSelectedClip(pointToFrame(m_mouseEnd.x()+m_mouseOffset.x()),m_mouseEnd.y()+m_mouseOffset.y());
             viewport()->update();
         }else{
-
             movePlayheadToFrame(pointToFrame(std::max(0,m_mouseEnd.x() + m_scrollOffset.x())));
             viewport()->update();
         }

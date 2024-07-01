@@ -334,7 +334,7 @@ void Video::moveToAudioBuffer(AudioBuffer &buffer, std::vector<AudioFrame> &fram
 
 }
 
-void Video::getAudio(int streamIndex, int64_t frameNumber, Audio &audio){
+void Video::getAudio(int streamIndex, int64_t frameNumber, double start, double end, Audio &audio){
 
     if(!isAudioBuffered(streamIndex,frameNumber))
         bufferAudio(streamIndex,frameNumber);
@@ -457,7 +457,7 @@ quint64 Video::assignStreamId(int streamIndex, AVFormatContext *format){
         scalerContexts[id] = scaler;
         width = params->width;
         height = params->height;
-        frameRate = formatContext->streams[videoStreamIndexes[0]]->avg_frame_rate.num;
+        m_frameRate = formatContext->streams[videoStreamIndexes[0]]->avg_frame_rate.num;
         startTime = formatContext->streams[videoStreamIndexes[0]]->start_time;
         frameCount = formatContext->streams[videoStreamIndexes[0]]->nb_frames;
         duration = (double)formatContext->streams[videoStreamIndexes[0]]->duration*(double)(formatContext->streams[videoStreamIndexes[0]]->time_base.num/formatContext->streams[videoStreamIndexes[0]]->time_base.den);

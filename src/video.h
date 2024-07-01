@@ -166,7 +166,11 @@ public:
     bool getVideoStreamInfo(int streamIndex,VideoStreamInfo& info);
     bool getVideoFileInfo(VideoFileInfo& info);
 
-    void getAudio(int streamIndex, int64_t frameNumber, Audio& audio);
+    void getAudio(int streamIndex, int64_t frameNumber, double start, double end, Audio& audio);
+
+    double getFrameRate(){
+        return m_frameRate;
+    }
 
 
 
@@ -182,7 +186,7 @@ private:
     //video
     int width;
     int height;
-    double frameRate;
+    double m_frameRate;
     int startTime;
     int frameCount;
     int duration;

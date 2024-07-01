@@ -8,6 +8,7 @@
 #include <QIODevice>
 #include <algorithm>
 #include <vector>
+#include "video.h"
 TimelineModel::TimelineModel()
 {
 
@@ -27,7 +28,8 @@ void TimelineModel::addClip(int trackIndex, int pos, int in, int out,Video* vide
     }
 
     QModelIndex parentIndex = index(trackIndex, 0, QModelIndex());
-
+    out-=1;
+    out = std::ceil((out/video->getFrameRate())*m_frameRate);
 
     ClipModel* clip = new ClipModel(pos,in,out,video,streamIndex,track,track->type());
 
@@ -306,7 +308,8 @@ std::vector<std::pair<const ClipModel *, int> > TimelineModel::getUnderPlayhead(
             if(m_playheadPos>clip->pos()+(clip->out()-clip->in()))
                 continue;
             int frame = m_playheadPos - clip->pos() + clip->in();
-
+            if(clip->type() == MediaType::VIDEO)
+                frame = frame/m_frameRate*clip->video()->getFrameRate();
             frameList.emplace_back(std::make_pair(clip,frame));
         }
     }
@@ -549,6 +552,8 @@ QVariant TimelineModel::data(const QModelIndex &index, int role) const
     if (!index.isValid()){
         if(role==TimelineLengthRole)
             return QVariant::fromValue(m_length);
+        if(role==TimelineFrameRateRole)
+            return QVariant::fromValue(m_frameRate);
         return QVariant();
     }
 
@@ -613,6 +618,10 @@ QVariant TimelineModel::data(const QModelIndex &index, int role) const
     case ClipTypeRole:
         clip = (ClipModel*)FromID(index.internalId());
         return QVariant::fromValue(clip->type());
+        break;
+    case ClipFrameRateRole:
+        clip = (ClipModel*)FromID(index.internalId());
+        return QVariant((clip->video()->getFrameRate()));
         break;
     default:
         return QVariant::fromValue(NULL);
@@ -681,6 +690,9 @@ QHash<int, QByteArray> TimelineModel::roleNames() const
     roles[ClipOutRole] = "clipOut";
     roles[ClipPosRole] = "clipPos";
     roles[ClipTypeRole] = "clipType";
+    roles[ClipFrameRateRole] = "clipFrameRate";
+    roles[TimelineLengthRole] = "timelineLenghth";
+    roles[TimelineFrameRateRole] = "TimelineFrameRate";
     roles[TrackNumberRole] = "trackNumber";
     roles[TrackTypeRole] = "trackType";
     roles[SelectedRole] = "selected";

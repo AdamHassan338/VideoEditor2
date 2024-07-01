@@ -40,6 +40,7 @@ public:
 
     void moveTrack(QModelIndex track,QModelIndex dest);
 
+    double m_frameRate =60;
 
 
 signals:
@@ -151,9 +152,11 @@ public:
         ClipPosRole,
         ClipLengthRole,
         ClipTypeRole,
+        ClipFrameRateRole,
         TrackNumberRole,
         TrackTypeRole,
         TimelineLengthRole,
+        TimelineFrameRateRole,
         SelectedRole,
         InRole,
         OutRole

@@ -11,28 +11,22 @@ TimelineWidget::TimelineWidget(QWidget *parent)
 
     QSplitter* splitter = new QSplitter(Qt::Horizontal,this);
     layout->addWidget(splitter);
-    TimelineModel* model = new TimelineModel();
-    //model->createTrack(MediaType::VIDEO);
-    //model->createTrack(MediaType::AUDIO);
+    m_model = new TimelineModel();
 
-    // track pos in out
-    //model->addClip(0,0,0,30);
-    //model->addClip(1,0,0,30);
+    m_timelineView = new TimelineView(this);
+    m_tracklistView = new TracklistView(this);
+    m_timelineView->setModel(m_model);
+    m_tracklistView->setModel(m_model);
 
-    TimelineView* view = new TimelineView(this);
-    TracklistView* tracklist = new TracklistView(this);
-    view->setModel(model);
-    tracklist->setModel(model);
-
-    QToolBar* toolbar = new QToolBar("zoom slider",view);
+    QToolBar* toolbar = new QToolBar("zoom slider",m_tracklistView);
     QSlider* slider = new QSlider(Qt::Horizontal);
 
     slider->setRange(2, 50);
     slider->setValue(5);
     toolbar->addWidget(slider);
 
-    splitter->addWidget(tracklist);
-    splitter->addWidget(view);
+    splitter->addWidget(m_tracklistView);
+    splitter->addWidget(m_timelineView);
     splitter->setHandleWidth(0);
     QList<int> sizes({120,780});
     splitter->setMouseTracking(true);
@@ -41,18 +35,18 @@ TimelineWidget::TimelineWidget(QWidget *parent)
     //splitter->resize(880,230);
     splitter->setSizes(sizes);
     setLayout(layout);
-    QObject::connect(slider,&QSlider::valueChanged,view,&TimelineView::setScale);
-    QObject::connect(view,&TimelineView::scrolled,tracklist,&TracklistView::scroll);
-    QObject::connect(tracklist,&TracklistView::scrolled,view,&TimelineView::scroll);
+    QObject::connect(slider,&QSlider::valueChanged,m_timelineView,&TimelineView::setScale);
+    QObject::connect(m_timelineView,&TimelineView::scrolled,m_tracklistView,&TracklistView::scroll);
+    QObject::connect(m_tracklistView,&TracklistView::scrolled,m_timelineView,&TimelineView::scroll);
 
-    QObject::connect(model,&TimelineModel::newClip,view,&TimelineView::addClipToMap);
-    QObject::connect(model,&TimelineModel::trackMoved,view,&TimelineView::TrackMoved);
+    QObject::connect(m_model,&TimelineModel::newClip,m_timelineView,&TimelineView::addClipToMap);
+    QObject::connect(m_model,&TimelineModel::trackMoved,m_timelineView,&TimelineView::TrackMoved);
 
-    QObject::connect(model,&TimelineModel::playheadMoved,tracklist,&TracklistView::setTime);
-    QObject::connect(model,&TimelineModel::tracksChanged,tracklist,&TracklistView::updateViewport);
+    QObject::connect(m_model,&TimelineModel::playheadMoved,m_tracklistView,&TracklistView::setTime);
+    QObject::connect(m_model,&TimelineModel::tracksChanged,m_tracklistView,&TracklistView::updateViewport);
 
 
-    QObject::connect(model,&TimelineModel::underPlayhead,this,&TimelineWidget::getFrames);
+    QObject::connect(m_model,&TimelineModel::underPlayhead,this,&TimelineWidget::getFrames);
 
 }
 
@@ -68,8 +62,13 @@ void TimelineWidget::getFrames(std::vector<std::pair<const ClipModel *, int>> cl
     for(std::pair<const ClipModel *, int> &item : clipItems){
         if(item.first->type()== MediaType::VIDEO)
         item.first->video()->decodeVideo(item.first->streamIndex(),item.second,videoFrame);
-        if(item.first->type()== MediaType::AUDIO)
-            item.first->video()->getAudio(item.first->streamIndex(),item.second,audio);
+        if(item.first->type()== MediaType::AUDIO){
+            int frame = item.second;
+            int framerate = item.first->video()->getFrameRate();
+            double time = frame/framerate;
+            double endtime = (frame+1)/framerate ;
+            item.first->video()->getAudio(item.first->streamIndex(),item.second,time,endtime,audio);
+        }
     }
 
     //if(frame.height==-1)

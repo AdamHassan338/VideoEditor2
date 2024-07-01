@@ -13,10 +13,12 @@ struct Clip{
     //int orginalIn;
     int originalOut;
     int track;
+    int srcFrameRate;
+    int srcLength;
     QString name;
-    Clip() : pos(0), in(0), out(0), originalOut(0), track(0), name("") {}
+    Clip() : pos(0), in(0), out(0), originalOut(0), track(0),srcFrameRate(0),srcLength(0), name("") {}
 
-    Clip(int pos,int in, int out,int track) : pos(pos),in(in),out(out),track(track), originalOut(out),name("")
+    Clip(int pos,int in, int out,int track, int srcLength, int srcFrameRate) : pos(pos),in(in),out(out),track(track), originalOut(out), srcFrameRate(srcFrameRate), srcLength(srcLength), name("")
     {}
 };
 
