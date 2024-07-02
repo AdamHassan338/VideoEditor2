@@ -76,13 +76,13 @@ bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoF
         responce = av_read_frame(formatContext,packet);
 
         if(responce>0){
-            av_packet_unref(packet);
+            //av_packet_unref(packet);
             continue;
         }
 
 
         if(packet->stream_index != streamIndex){
-            av_packet_unref(packet);
+            //av_packet_unref(packet);
             continue;
         }
 
@@ -99,15 +99,15 @@ bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoF
                 avcodec_send_packet(codecCtx, nullptr);
                 continue;
             }
-            av_packet_unref(packet);
-            av_frame_unref(frame);
+            //av_packet_unref(packet);
+            //av_frame_unref(frame);
             continue;
         }
 
 
         if (frame->pts >=pts) {
             found = true;
-            av_packet_unref(packet);
+            //av_packet_unref(packet);
             break;
         }
 
@@ -122,13 +122,15 @@ bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoF
             break;
 
 
-        av_packet_unref(packet);
+        //av_packet_unref(packet);
 
     }
 
 
     if (!found) {
         qDebug("Frame with PTS %llu not found", pts);
+        av_packet_unref(packet);
+        av_frame_unref(frame);
         return false;
     }
 
@@ -167,6 +169,7 @@ bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoF
     videoFrame.linesize = outputLinesize[0];
     //videoFrame->format =
     av_frame_unref(frame);
+    av_packet_unref(packet);
 
 
     return true;
@@ -348,11 +351,11 @@ void Video::getAudio(int streamIndex, int64_t frameNumber, double start, double 
 
     int64_t startPtsOffset = ((double)((double)start) * timebaseFactor) - m_audioBuffer.startPTS;
     int64_t startSampleOffset = (double)((double)startPtsOffset/ timebaseFactor ) *sampleRate ;
-    int64_t startByteOffset = startSampleOffset*2*bytesPerSample;
+    int64_t startByteOffset = startSampleOffset* codecCtx->ch_layout.nb_channels *bytesPerSample;
 
     int64_t endPtsOffset = ( (double)((double)end) * timebaseFactor) - m_audioBuffer.startPTS ;
     int64_t endSampleOffset = (double)((double)endPtsOffset/ timebaseFactor) *sampleRate;
-    int64_t endByteOffset = endSampleOffset *2 *bytesPerSample;
+    int64_t endByteOffset = endSampleOffset * codecCtx->ch_layout.nb_channels  *bytesPerSample;
 
     endByteOffset-=startByteOffset;
 
@@ -397,6 +400,8 @@ bool Video::getVideoStreamInfo(int streamIndex, VideoStreamInfo &info)
     info.height = codecCtx->height;
     info.pixFmt = codecCtx->pix_fmt;
     info.frameCount = stream->nb_frames;
+    if(info.frameCount<=0)
+        info.frameCount=frameCount;
 
     return true;
 }
@@ -458,6 +463,10 @@ quint64 Video::assignStreamId(int streamIndex, AVFormatContext *format){
         startTime = formatContext->streams[videoStreamIndexes[0]]->start_time;
         frameCount = formatContext->streams[videoStreamIndexes[0]]->nb_frames;
         duration = (double)formatContext->streams[videoStreamIndexes[0]]->duration*(double)(formatContext->streams[videoStreamIndexes[0]]->time_base.num/formatContext->streams[videoStreamIndexes[0]]->time_base.den);
+        if(duration<=0){
+            duration = formatContext->duration /(double)1e6;
+            frameCount = std::floor(duration*m_frameRate);
+        }
         AVStream* ABC = formatContext->streams[videoStreamIndexes[0]];
         int a=2;
     }

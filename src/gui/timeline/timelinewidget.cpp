@@ -68,7 +68,6 @@ void TimelineWidget::getFrames(std::vector<std::pair<const ClipModel *, int>> cl
             double timelineFrameRate = m_model->data(QModelIndex(),TimelineModel::TimelineFrameRateRole).toDouble();
             double time = frame/timelineFrameRate;
             double endtime = (frame+1)/timelineFrameRate;
-            qDebug()<<time << " " << endtime;
             //real frame based on video stream
             frame = std::floor(frame/timelineFrameRate *item.first->video()->getFrameRate());
             item.first->video()->getAudio(item.first->streamIndex(),frame,time,endtime,audio);
@@ -79,8 +78,6 @@ void TimelineWidget::getFrames(std::vector<std::pair<const ClipModel *, int>> cl
         //return;
     if(audio.size>0)
         emit newAudioFrame(audio);
-    else
-        qDebug()<<"zero audio";
     emit newImage(videoFrame);
 
     return;

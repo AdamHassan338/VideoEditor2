@@ -189,7 +189,7 @@ private:
     double m_frameRate;
     int startTime;
     int frameCount;
-    int duration;
+    double duration;
     int timebase;
     //AVRational timeBase;
     //uint8_t* imageBuffer;
