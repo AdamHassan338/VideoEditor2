@@ -40,7 +40,7 @@ public:
 
     void moveTrack(QModelIndex track,QModelIndex dest);
 
-    double m_frameRate =60;
+    double m_frameRate =23.98;
 
 
 signals:

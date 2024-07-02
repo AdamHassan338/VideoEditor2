@@ -18,7 +18,7 @@ TimelineWidget::TimelineWidget(QWidget *parent)
     m_timelineView->setModel(m_model);
     m_tracklistView->setModel(m_model);
 
-    QToolBar* toolbar = new QToolBar("zoom slider",m_tracklistView);
+    QToolBar* toolbar = new QToolBar("zoom slider",m_timelineView);
     QSlider* slider = new QSlider(Qt::Horizontal);
 
     slider->setRange(2, 50);
@@ -63,11 +63,15 @@ void TimelineWidget::getFrames(std::vector<std::pair<const ClipModel *, int>> cl
         if(item.first->type()== MediaType::VIDEO)
         item.first->video()->decodeVideo(item.first->streamIndex(),item.second,videoFrame);
         if(item.first->type()== MediaType::AUDIO){
+            //frame comes in with timeline number
             int frame = item.second;
-            int framerate = item.first->video()->getFrameRate();
-            double time = frame/framerate;
-            double endtime = (frame+1)/framerate ;
-            item.first->video()->getAudio(item.first->streamIndex(),item.second,time,endtime,audio);
+            double timelineFrameRate = m_model->data(QModelIndex(),TimelineModel::TimelineFrameRateRole).toDouble();
+            double time = frame/timelineFrameRate;
+            double endtime = (frame+1)/timelineFrameRate;
+            qDebug()<<time << " " << endtime;
+            //real frame based on video stream
+            frame = std::floor(frame/timelineFrameRate *item.first->video()->getFrameRate());
+            item.first->video()->getAudio(item.first->streamIndex(),frame,time,endtime,audio);
         }
     }
 
@@ -75,6 +79,8 @@ void TimelineWidget::getFrames(std::vector<std::pair<const ClipModel *, int>> cl
         //return;
     if(audio.size>0)
         emit newAudioFrame(audio);
+    else
+        qDebug()<<"zero audio";
     emit newImage(videoFrame);
 
     return;

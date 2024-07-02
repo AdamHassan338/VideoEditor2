@@ -54,7 +54,7 @@ bool Video::open(){
 bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoFrame){
 
     AVStream* stream = formatContext->streams[videoStreamIndexes[streamIndex]];
-    double framerate = stream->avg_frame_rate.num / stream->avg_frame_rate.den;
+    double framerate = stream->avg_frame_rate.num / (double)stream->avg_frame_rate.den;
     int64_t pts = (int64_t)((double)frameNumber * (double)stream->time_base.den / (double)((double)framerate * (double)stream->time_base.num));
 
     //qDebug()<<"seek for " << pts;
@@ -172,17 +172,17 @@ bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoF
     return true;
 }
 
-std::vector<AudioFrame> Video::decodeAudio(int streamIndex, int startTime, std::vector<AudioFrame> &audioFrames){
+std::vector<AudioFrame> Video::decodeAudio(int streamIndex, double startTime, std::vector<AudioFrame> &audioFrames){
 
     AVCodecContext* codecCtx = codecContexts[audioStreamIndexes[streamIndex]];
     streamIndex = audioStreamIndexes[streamIndex];
     AVStream* stream = formatContext->streams[streamIndex];
 
 
-    int64_t pts = (startTime-m_bufferPaddingTime) * stream->time_base.den/stream->time_base.num;
+    int64_t pts = (startTime-(double)m_bufferPaddingTime) * stream->time_base.den/(double)stream->time_base.num;
     if(pts<0)
         pts=0;
-    int64_t nextpts = (startTime+ m_bufferTime + m_bufferPaddingTime) * stream->time_base.den/stream->time_base.num;
+    int64_t nextpts = (startTime+ (double)(m_bufferTime + m_bufferPaddingTime)) * stream->time_base.den/(double)stream->time_base.num;
 
     av_seek_frame(formatContext,streamIndex,pts, AVSEEK_FLAG_BACKWARD);
     avcodec_flush_buffers(codecCtx);
@@ -270,16 +270,13 @@ std::vector<AudioFrame> Video::decodeAudio(int streamIndex, int startTime, std::
     return audioFrames;
 }
 
-bool Video::isAudioBuffered(int streamIndex, int frameNumber){
+bool Video::isAudioBuffered(int streamIndex, double time){
     streamIndex = audioStreamIndexes[streamIndex];
-    AVStream* stream = formatContext->streams[videoStreamIndexes[0]];
+    AVStream* stream = formatContext->streams[streamIndex];
     const AVRational &timebase = stream->time_base;
-    double framerate = stream->avg_frame_rate.num / stream->avg_frame_rate.den;
-    stream = formatContext->streams[streamIndex];
-    int64_t pts = (frameNumber /framerate) * stream->time_base.den/stream->time_base.num;
-    stream = formatContext->streams[streamIndex];
-    uint64_t startPTS = m_audioBuffer.startTime * stream->time_base.den/stream->time_base.num;
-    uint64_t endPTS = (m_audioBuffer.endTime) * stream->time_base.den/stream->time_base.num;
+    int64_t pts = (time) * timebase.den/timebase.num;
+    uint64_t startPTS = m_audioBuffer.startTime * timebase.den/timebase.num;
+    uint64_t endPTS = (m_audioBuffer.endTime) * timebase.den/timebase.num;
 
     if(pts>=startPTS && pts<= endPTS)
         return true;
@@ -287,14 +284,14 @@ bool Video::isAudioBuffered(int streamIndex, int frameNumber){
     return false;
 }
 
-void Video::bufferAudio(int streamIndex, int frameNumber){
+void Video::bufferAudio(int streamIndex, double start){
     std::vector<AudioFrame> frames;
 
     m_audioBuffer = AudioBuffer();
 
     AVStream* stream = formatContext->streams[videoStreamIndexes[0]];
     double framerate = stream->avg_frame_rate.num / stream->avg_frame_rate.den;
-    int startTime = frameNumber /framerate;
+    double startTime = start;
 
     decodeAudio(streamIndex,startTime,frames);
 
@@ -336,8 +333,8 @@ void Video::moveToAudioBuffer(AudioBuffer &buffer, std::vector<AudioFrame> &fram
 
 void Video::getAudio(int streamIndex, int64_t frameNumber, double start, double end, Audio &audio){
 
-    if(!isAudioBuffered(streamIndex,frameNumber))
-        bufferAudio(streamIndex,frameNumber);
+    if(!isAudioBuffered(streamIndex,start))
+        bufferAudio(streamIndex,start);
 
     AVCodecContext* codecCtx = codecContexts[audioStreamIndexes[streamIndex]];
     streamIndex = audioStreamIndexes[streamIndex];
@@ -349,11 +346,11 @@ void Video::getAudio(int streamIndex, int64_t frameNumber, double start, double 
     int bytesPerSample = av_get_bytes_per_sample(av_get_packed_sample_fmt(static_cast<AVSampleFormat>(codecCtx->sample_fmt)));
     double timebaseFactor = double(timebase.den/timebase.num);
 
-    int64_t startPtsOffset = ((double)((double)frameNumber /framerate) * timebaseFactor) - m_audioBuffer.startPTS;
+    int64_t startPtsOffset = ((double)((double)start) * timebaseFactor) - m_audioBuffer.startPTS;
     int64_t startSampleOffset = (double)((double)startPtsOffset/ timebaseFactor ) *sampleRate ;
     int64_t startByteOffset = startSampleOffset*2*bytesPerSample;
 
-    int64_t endPtsOffset = ( (double)((double)(frameNumber+1) /framerate) * timebaseFactor) - m_audioBuffer.startPTS ;
+    int64_t endPtsOffset = ( (double)((double)end) * timebaseFactor) - m_audioBuffer.startPTS ;
     int64_t endSampleOffset = (double)((double)endPtsOffset/ timebaseFactor) *sampleRate;
     int64_t endByteOffset = endSampleOffset *2 *bytesPerSample;
 
@@ -457,7 +454,7 @@ quint64 Video::assignStreamId(int streamIndex, AVFormatContext *format){
         scalerContexts[id] = scaler;
         width = params->width;
         height = params->height;
-        m_frameRate = formatContext->streams[videoStreamIndexes[0]]->avg_frame_rate.num;
+        m_frameRate = formatContext->streams[videoStreamIndexes[0]]->avg_frame_rate.num / (double)(formatContext->streams[videoStreamIndexes[0]]->avg_frame_rate.den);
         startTime = formatContext->streams[videoStreamIndexes[0]]->start_time;
         frameCount = formatContext->streams[videoStreamIndexes[0]]->nb_frames;
         duration = (double)formatContext->streams[videoStreamIndexes[0]]->duration*(double)(formatContext->streams[videoStreamIndexes[0]]->time_base.num/formatContext->streams[videoStreamIndexes[0]]->time_base.den);

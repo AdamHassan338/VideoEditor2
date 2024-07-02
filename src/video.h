@@ -64,8 +64,8 @@ struct AudioBuffer{
     uint8_t frameCount;
     uint8_t paddingFrameCount;
     int size;
-    int startTime;
-    int endTime;
+    double startTime;
+    double endTime;
 
     AudioBuffer(){
         data = NULL;
@@ -214,11 +214,11 @@ private:
     //AVBufferRef* hw_device_ctx = nullptr;
 
 
-    std::vector<AudioFrame> decodeAudio(int streamIndex, int startTime, std::vector<AudioFrame> &audioFrames);
+    std::vector<AudioFrame> decodeAudio(int streamIndex, double startTime, std::vector<AudioFrame> &audioFrames);
 
-    bool isAudioBuffered(int streamIndex, int frameNumber);
+    bool isAudioBuffered(int streamIndex, double time);
 
-    void bufferAudio(int streamIndex,int frameNumber);
+    void bufferAudio(int streamIndex,double start);
 
     static void moveToAudioBuffer(AudioBuffer &buffer, std::vector<AudioFrame> &frames, int padding);
     quint64 assignStreamId(int streamIndex,AVFormatContext* format);
