@@ -191,6 +191,7 @@ private:
     int frameCount;
     double duration;
     int timebase;
+    int lastFrame = -2;
     //AVRational timeBase;
     //uint8_t* imageBuffer;
     int64_t pts;
@@ -217,6 +218,12 @@ private:
     std::vector<AudioFrame> decodeAudio(int streamIndex, double startTime, std::vector<AudioFrame> &audioFrames);
 
     bool isAudioBuffered(int streamIndex, double time);
+
+    bool seekFrame(int streamIndex, int frameNumber);
+
+    bool readFrame(int streamIndex, int64_t pts = INT64_MIN);
+
+    bool convertFrame(int streamIndex, VideoFrame& videoFrame);
 
     void bufferAudio(int streamIndex,double start);
 

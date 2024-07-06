@@ -51,7 +51,9 @@ bool Video::open(){
     return true;
 }
 
-bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoFrame){
+
+bool Video::seekFrame(int streamIndex, int frameNumber)
+{
 
     AVStream* stream = formatContext->streams[videoStreamIndexes[streamIndex]];
     double framerate = stream->avg_frame_rate.num / (double)stream->avg_frame_rate.den;
@@ -59,15 +61,32 @@ bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoF
 
     //qDebug()<<"seek for " << pts;
     //qDebug()<<"seek for adjusted" << pts + stream->start_time;
-    streamIndex = videoStreamIndexes[streamIndex];
+    int realStreamIndex = videoStreamIndexes[streamIndex];
 
-    AVCodecContext* codecCtx = codecContexts[streamIndex];
+    AVCodecContext* codecCtx = codecContexts[realStreamIndex];
 
     //qDebug() << "starting at " <<stream->start_time;
     pts += stream->start_time;
     avcodec_flush_buffers(codecCtx);
-    av_seek_frame(formatContext, streamIndex, pts, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
+    av_seek_frame(formatContext, realStreamIndex, pts, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
 
+
+    if (!readFrame(streamIndex,pts)) {
+        qDebug("Frame with PTS %llu not found", pts);
+        av_packet_unref(packet);
+        av_frame_unref(frame);
+        return false;
+    }
+
+    return true;
+
+}
+
+bool Video::readFrame(int streamIndex, int64_t pts){
+
+    int realStreamIndex = videoStreamIndexes[streamIndex];
+
+    AVCodecContext* codecCtx = codecContexts[realStreamIndex];
 
     bool found = false;
     int responce;
@@ -105,7 +124,7 @@ bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoF
         }
 
 
-        if (frame->pts >=pts) {
+        if (pts!= INT64_MIN && frame->pts >=pts) {
             found = true;
             //av_packet_unref(packet);
             break;
@@ -116,6 +135,8 @@ bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoF
             qDebug("Failed to decode packet: %s \n", av_make_error(responce));
             return false;
 
+        }else if(pts==INT64_MIN){
+            found = true;
         }
 
         if(found)
@@ -125,19 +146,13 @@ bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoF
         //av_packet_unref(packet);
 
     }
+    return found;
+}
 
+bool Video::convertFrame(int streamIndex, VideoFrame &videoFrame){
+    int realStreamIndex = videoStreamIndexes[streamIndex];
 
-    if (!found) {
-        qDebug("Frame with PTS %llu not found", pts);
-        av_packet_unref(packet);
-        av_frame_unref(frame);
-        return false;
-    }
-
-    pts = frame->pts;
-
-
-    SwsContext* scaler = scalerContexts[streamIndexes[streamIndex]];
+    SwsContext* scaler = scalerContexts[streamIndexes[realStreamIndex]];
     if(!scaler){
         /* TO DO */
         //initializeScaler();
@@ -155,7 +170,7 @@ bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoF
 
     //convert YUV data to RGBA
     /* TO DO */
-     /* Higher bitdepth videos */
+    /* Higher bitdepth videos */
 
     uint8_t* frameBuffer = new uint8_t [frame->width * frame->height * 4 ]; //multiply by 4 for the 4 channels R G B A
     uint8_t* output[4] = {frameBuffer,NULL,NULL,NULL};
@@ -167,11 +182,27 @@ bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoF
     videoFrame.width = frame->width;
     videoFrame.height = frame->height;
     videoFrame.linesize = outputLinesize[0];
+
+    return true;
+}
+
+bool Video::decodeVideo(int streamIndex, int64_t frameNumber, VideoFrame &videoFrame){
+
+    if(lastFrame+1 == frameNumber){
+        readFrame(streamIndex);
+    }else{
+        seekFrame(streamIndex,frameNumber);
+
+    }
+
+    convertFrame(streamIndex,videoFrame);
+
+
     //videoFrame->format =
     av_frame_unref(frame);
     av_packet_unref(packet);
 
-
+    lastFrame = frameNumber;
     return true;
 }
 
@@ -286,6 +317,7 @@ bool Video::isAudioBuffered(int streamIndex, double time){
 
     return false;
 }
+
 
 void Video::bufferAudio(int streamIndex, double start){
     std::vector<AudioFrame> frames;
