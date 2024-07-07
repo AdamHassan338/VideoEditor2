@@ -208,6 +208,9 @@ private:
 
     //ffmpeg
     AVFormatContext* formatContext;
+
+    AVFormatContext* audioFormatContext;
+    AVFormatContext* videoFormatContext;
     AVFrame* frame;
     //AVFrame* Hwframe;
     AVPacket* packet;

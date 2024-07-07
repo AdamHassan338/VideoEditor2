@@ -16,7 +16,9 @@ Video::Video(const char *path) : m_path(path){
 
 bool Video::open(){
     formatContext = avformat_alloc_context();
-    if(avformat_open_input(&formatContext,m_path,NULL,NULL)<0){
+    videoFormatContext = avformat_alloc_context();
+    audioFormatContext = avformat_alloc_context();
+    if((avformat_open_input(&formatContext,m_path,NULL,NULL)<0) || (avformat_open_input(&videoFormatContext,m_path,NULL,NULL)<0) || (avformat_open_input(&audioFormatContext,m_path,NULL,NULL)<0)){
         qDebug()<<"Could not open source file";
         return false;
     }
@@ -55,7 +57,7 @@ bool Video::open(){
 bool Video::seekFrame(int streamIndex, int frameNumber)
 {
 
-    AVStream* stream = formatContext->streams[videoStreamIndexes[streamIndex]];
+    AVStream* stream = videoFormatContext->streams[videoStreamIndexes[streamIndex]];
     double framerate = stream->avg_frame_rate.num / (double)stream->avg_frame_rate.den;
     int64_t pts = (int64_t)((double)frameNumber * (double)stream->time_base.den / (double)((double)framerate * (double)stream->time_base.num));
 
@@ -68,7 +70,7 @@ bool Video::seekFrame(int streamIndex, int frameNumber)
     //qDebug() << "starting at " <<stream->start_time;
     pts += stream->start_time;
     avcodec_flush_buffers(codecCtx);
-    av_seek_frame(formatContext, realStreamIndex, pts, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
+    av_seek_frame(videoFormatContext, realStreamIndex, pts, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
 
 
     if (!readFrame(streamIndex,pts)) {
@@ -92,16 +94,16 @@ bool Video::readFrame(int streamIndex, int64_t pts){
     int responce;
 
     while(!found){
-        responce = av_read_frame(formatContext,packet);
+        responce = av_read_frame(videoFormatContext,packet);
 
         if(responce>0){
-            //av_packet_unref(packet);
+            av_packet_unref(packet);
             continue;
         }
 
 
         if(packet->stream_index != streamIndex){
-            //av_packet_unref(packet);
+            av_packet_unref(packet);
             continue;
         }
 
@@ -118,24 +120,26 @@ bool Video::readFrame(int streamIndex, int64_t pts){
                 avcodec_send_packet(codecCtx, nullptr);
                 continue;
             }
-            //av_packet_unref(packet);
-            //av_frame_unref(frame);
+            av_packet_unref(packet);
+            av_frame_unref(frame);
             continue;
         }
 
 
-        if (pts!= INT64_MIN && frame->pts >=pts) {
-            found = true;
-            //av_packet_unref(packet);
-            break;
-        }
 
-        else if(responce < 0){
+
+        if(responce < 0){
 
             qDebug("Failed to decode packet: %s \n", av_make_error(responce));
             return false;
 
-        }else if(pts==INT64_MIN){
+        }else if (pts!= INT64_MIN && frame->pts >=pts) {
+                found = true;
+                av_packet_unref(packet);
+                break;
+        }
+
+        else if(pts==INT64_MIN){
             found = true;
         }
 
@@ -143,7 +147,7 @@ bool Video::readFrame(int streamIndex, int64_t pts){
             break;
 
 
-        //av_packet_unref(packet);
+        av_packet_unref(packet);
 
     }
     return found;
@@ -218,14 +222,14 @@ std::vector<AudioFrame> Video::decodeAudio(int streamIndex, double startTime, st
         pts=0;
     int64_t nextpts = (startTime+ (double)(m_bufferTime + m_bufferPaddingTime)) * stream->time_base.den/(double)stream->time_base.num;
 
-    av_seek_frame(formatContext,streamIndex,pts, AVSEEK_FLAG_BACKWARD);
+    av_seek_frame(audioFormatContext,streamIndex,pts, AVSEEK_FLAG_BACKWARD);
     avcodec_flush_buffers(codecCtx);
 
     int responce;
     bool found = false;
 
 
-    while(!found && av_read_frame(formatContext,packet)>=0){
+    while(!found && av_read_frame(audioFormatContext,packet)>=0){
 
         if (packet->stream_index != streamIndex ){
             av_packet_unref(packet);
