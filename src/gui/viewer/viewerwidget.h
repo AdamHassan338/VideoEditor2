@@ -18,9 +18,12 @@ public:
     void setSrcRes(int width, int height);
 
 signals:
+    void play();
+    void pause();
 
 public slots:
     void setImage(VideoFrame frame);
+
 
 private:
     QLabel* m_label;
@@ -35,6 +38,8 @@ private:
 
     void scalePixmap();
 
+private slots:
+        void playPause(bool b);
 
     // QWidget interface
 protected:

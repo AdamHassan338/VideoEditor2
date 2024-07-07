@@ -1,6 +1,7 @@
 #include "timelinewidget.h"
 #include <QHBoxLayout>
 #include "video.h"
+#include <QTimer>
 
 TimelineWidget::TimelineWidget(QWidget *parent)
     : QFrame(parent)
@@ -17,6 +18,8 @@ TimelineWidget::TimelineWidget(QWidget *parent)
     m_tracklistView = new TracklistView(this);
     m_timelineView->setModel(m_model);
     m_tracklistView->setModel(m_model);
+
+     m_playTimer = new QTimer();
 
     QToolBar* toolbar = new QToolBar("zoom slider",m_timelineView);
     QSlider* slider = new QSlider(Qt::Horizontal);
@@ -47,6 +50,7 @@ TimelineWidget::TimelineWidget(QWidget *parent)
 
 
     QObject::connect(m_model,&TimelineModel::underPlayhead,this,&TimelineWidget::getFrames);
+    QObject::connect(m_playTimer,&QTimer::timeout,this,&TimelineWidget::movePlayhead);
 
 }
 
@@ -83,5 +87,27 @@ void TimelineWidget::getFrames(std::vector<std::pair<const ClipModel *, int>> cl
     return;
 
  /* TO DO */
+}
+
+void TimelineWidget::play()
+{
+    if(m_playTimer == nullptr)
+        m_playTimer = new QTimer();
+    int frameTime = (1/m_model->data(QModelIndex(),TimelineModel::TimelineFrameRateRole).toDouble()) * 1000;
+    m_playTimer->setInterval(frameTime);
+    m_playTimer->start();
+}
+
+void TimelineWidget::pause()
+{
+    if(!m_playTimer)
+        return;
+    m_playTimer->stop();
+}
+
+void TimelineWidget::movePlayhead()
+{
+    m_timelineView->moveForward();
+
 }
 

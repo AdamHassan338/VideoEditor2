@@ -34,6 +34,7 @@ class TimelineView : public QAbstractItemView
 public:
     TimelineView(QWidget *parent = nullptr);
     void updateScrollBars();
+    void moveForward();
 
 private:
 

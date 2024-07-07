@@ -408,6 +408,12 @@ int TimelineView::getTrackWdith() const{
 
 int TimelineView::getPlayheadPos() {return frameToPoint(((TimelineModel*)model())->getPlayheadPos());}
 
+void TimelineView::moveForward()
+{
+    movePlayheadToFrame(((TimelineModel*)model())->getPlayheadPos()+1);
+    viewport()->update();
+}
+
 void TimelineView::setScale(double value)//late make this scale from point of mouse
 {
 

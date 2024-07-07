@@ -26,11 +26,15 @@ signals:
 
 public slots:
     void getFrames(std::vector<std::pair<const ClipModel*, int>> clipItems);
+    void play();
+    void pause();
+    void movePlayhead();
 
 private:
     TimelineView* m_timelineView;
     TracklistView* m_tracklistView;
     TimelineModel* m_model;
     QSplitter* m_splitter;
+    QTimer* m_playTimer;
 };
 #endif // TIMELINEWIDGET_H

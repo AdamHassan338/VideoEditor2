@@ -23,6 +23,8 @@ ViewerWidget::ViewerWidget(QWidget *parent)
     m_label->setPixmap(pixmap);
 
     m_playButton = new QPushButton(this);
+    m_playButton->setCheckable(true);
+    m_playButton->setChecked(false);
     m_playButton->setText("Play/Pause");
 
     QHBoxLayout *viewerlayout = new QHBoxLayout();
@@ -48,6 +50,8 @@ ViewerWidget::ViewerWidget(QWidget *parent)
     viewerlayout->setSpacing(20);
 
     setLayout(layout);
+
+    QObject::connect(m_playButton,&QPushButton::toggled,this,&ViewerWidget::playPause);
 
 }
 
@@ -91,6 +95,15 @@ void ViewerWidget::scalePixmap()
     m_label->setPixmap(pixmap);
     qDebug()<< "width: " << width << " Height: " << height;
     qDebug() << m_label->rect();
+}
+
+void ViewerWidget::playPause(bool b)
+{
+    if(b)
+        emit play();
+    else
+        emit pause();
+
 }
 
 void ViewerWidget::resizeEvent(QResizeEvent *event)

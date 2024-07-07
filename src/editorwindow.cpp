@@ -42,6 +42,10 @@ EditorWindow::EditorWindow(QWidget *parent)
             m_audioSink->stop();
         });
 
+    QObject::connect(m_viewerWidegt,&ViewerWidget::play,m_timelineWidget,&TimelineWidget::play);
+
+    QObject::connect(m_viewerWidegt,&ViewerWidget::pause,m_timelineWidget,&TimelineWidget::pause);
+
 }
 
 void EditorWindow::writeToAudioSink(Audio audio)
