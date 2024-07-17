@@ -5,7 +5,8 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include "video.h"
-
+#include "vulkan/vulkanwindow.h"
+#include "vulkan/vulkanwidget.h"
 class QPushButton;
 class QPixmap;
 class QLabel;
@@ -14,7 +15,7 @@ class ViewerWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit ViewerWidget(QWidget *parent = nullptr);
+    ViewerWidget(VulkanWindow* vulkanWindow,QWidget *parent = nullptr);
     void setSrcRes(int width, int height);
 
 signals:
@@ -35,6 +36,10 @@ private:
     QVBoxLayout* layout;
     QImage m_lastImage;
     VideoFrame lastFrame;
+    VulkanWindow* m_vulkanWindow;
+    QWidget* m_wrapper;
+    VulkanWidget* vulkanWidget;
+
 
     void scalePixmap();
 

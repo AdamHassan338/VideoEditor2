@@ -5,16 +5,24 @@
 #include <QPixmap>
 #include <QPushButton>
 #include <QResizeEvent>
-ViewerWidget::ViewerWidget(QWidget *parent)
+#include <vulkan/vulkanwidget.h>
+
+ViewerWidget::ViewerWidget(VulkanWindow* vulkanWindow,QWidget *parent)
     : QWidget{parent}
 {
+    m_vulkanWindow = vulkanWindow;
+
+    vulkanWidget = new VulkanWidget(m_vulkanWindow);
+
     QVBoxLayout *layout = new QVBoxLayout();
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
-    m_label = new QLabel(this);
+    m_label = new QLabel();
     m_label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    m_label->setMinimumSize(100,100);
+    m_label->setMinimumHeight(100);
+
+    vulkanWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     QImage img(parent->height(),parent->height(),QImage::Format_RGB888);
     img.fill(Qt::black);
@@ -37,8 +45,8 @@ ViewerWidget::ViewerWidget(QWidget *parent)
 
     layout->addItem(viewerlayout);
     viewerlayout->addSpacerItem(leftSpacer);
-    viewerlayout->addWidget(m_label);
-    viewerlayout->setAlignment(m_label,Qt::AlignCenter);
+    viewerlayout->addWidget(vulkanWidget);
+    viewerlayout->setAlignment(vulkanWidget,Qt::AlignCenter);
     viewerlayout->addSpacerItem(RightSpacer);
     m_playButton->setMaximumWidth(100);
     layout->addWidget(m_playButton);
@@ -50,7 +58,6 @@ ViewerWidget::ViewerWidget(QWidget *parent)
     viewerlayout->setSpacing(20);
 
     setLayout(layout);
-
     QObject::connect(m_playButton,&QPushButton::toggled,this,&ViewerWidget::playPause);
 
 }
@@ -83,6 +90,7 @@ void ViewerWidget::scalePixmap()
 {
     int width = size().width();
     int height = size().height()-m_playButton->height()-100;
+
     double scaleWidth = (double)width/(double)m_srcWidth;
     double scaleHeight = (double)height/(double)m_srcHeight;
     double scale = width>height ? scaleHeight : scaleWidth;
@@ -93,8 +101,10 @@ void ViewerWidget::scalePixmap()
 
     QPixmap pixmap = QPixmap::fromImage(scaled);
     m_label->setPixmap(pixmap);
-    qDebug()<< "width: " << width << " Height: " << height;
-    qDebug() << m_label->rect();
+
+    vulkanWidget->updateSizeHint(width,height);
+
+
 }
 
 void ViewerWidget::playPause(bool b)

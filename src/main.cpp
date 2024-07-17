@@ -13,11 +13,20 @@
 #include "types.h"
 
 #include <QApplication>
+#include <QVulkanInstance>
 #include <QToolBar>
 #include<QStyleFactory>
 #include <QSplitter>
 #include <QPalette>
 #include <QStyle>
+
+#include "vulkan/vulkanwindow.h"
+#include <QtVersion>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
+
+
 
 int main(int argc, char *argv[]){
     QColor bgColour = QColor("#262626");
@@ -28,7 +37,32 @@ int main(int argc, char *argv[]){
     qApp->setStyle(QStyleFactory::create("fusion"));
     qRegisterMetaType<MediaType>("MediaType");
 
-    EditorWindow w;
+
+    QVulkanInstance inst;
+    inst.setLayers({ "VK_LAYER_KHRONOS_validation",VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME });
+    //inst.setLayers({VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME });
+
+    inst.setApiVersion(QVersionNumber(1, 3));
+
+
+    if (!inst.create())
+        qFatal("Failed to create Vulkan instance: %d", inst.errorCode());
+
+
+    //qDebug() << inst.apiVersion();
+    //qDebug() << inst.extensions();
+    VulkanWindow vw;
+    //w.setFormat(format);
+    //w.setEnabledFeaturesModifier(modifyDeviceFeatures);
+
+
+    vw.setVulkanInstance(&inst);
+
+
+    //w.resize(1024, 768);
+    //w.show();
+
+    EditorWindow w(&vw);
     QPalette palette = w.palette();
     palette.setColor(QPalette::Window,"#262626");
     palette.setColor(QPalette::Button,"#555555");

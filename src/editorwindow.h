@@ -5,7 +5,7 @@
 #include "timelinewidget.h"
 #include "viewerwidget.h"
 #include <QTimer>
-
+#include "vulkan/vulkanwindow.h"
 class QAudioSink;
 class QIODevice;
 
@@ -13,7 +13,7 @@ class EditorWindow : public QMainWindow
 {
     Q_OBJECT
 public:
-    explicit EditorWindow(QWidget *parent = nullptr);
+    EditorWindow(VulkanWindow* vulkanWindow,QWidget *parent = nullptr);
 
 public slots:
     void writeToAudioSink(Audio audio);

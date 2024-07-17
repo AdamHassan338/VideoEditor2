@@ -5,7 +5,7 @@
 #include <QAudioSink>
 #include <QAudioSource>
 
-EditorWindow::EditorWindow(QWidget *parent)
+EditorWindow::EditorWindow(VulkanWindow* vulkanWindow,QWidget *parent)
     : QMainWindow{parent}
 {
 
@@ -17,7 +17,7 @@ EditorWindow::EditorWindow(QWidget *parent)
 
 
     m_timelineWidget = new TimelineWidget(centralWidget);
-    m_viewerWidegt = new ViewerWidget(this);
+    m_viewerWidegt = new ViewerWidget(vulkanWindow,this);
     setCentralWidget(centralWidget);
     splitter->addWidget(m_viewerWidegt);
     splitter->addWidget(m_timelineWidget);

@@ -6,7 +6,6 @@
 #include "video.h"
 
 
-
 class ResourceManager
 {
 public:
@@ -32,6 +31,7 @@ private:
     ResourceManager() = default;
     quint64 m_nextId =0;
     std::map<std::string,ManagedVideo> m_videos;
+
 
 
 };
