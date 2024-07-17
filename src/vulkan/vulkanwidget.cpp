@@ -10,6 +10,8 @@ VulkanWidget::VulkanWidget(VulkanWindow *window, QWidget *parent)
 
     QVBoxLayout *layout = new QVBoxLayout;
     layout->addWidget(wrapper);
+    layout->setContentsMargins(0,0,0,0);
+    layout->setSpacing(0);
     setLayout(layout);
     setMinimumSize(100,100/(16.0/9.0));
 }

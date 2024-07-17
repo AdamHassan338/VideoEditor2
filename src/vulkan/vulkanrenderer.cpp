@@ -398,6 +398,8 @@ void VulkanRenderer::startNextFrame()
 void VulkanRenderer::newImage(VideoFrame frame)
 {
     m_devFuncs->vkQueueWaitIdle(m_window->graphicsQueue());
+    vmaDestroyImage(m_allocator, m_image.image, m_image.allocation);
+
     m_image=loadImage(frame);
 
         DescriptorWriter writer;

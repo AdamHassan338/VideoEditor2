@@ -52,7 +52,7 @@ void EditorWindow::writeToAudioSink(Audio audio)
 {   if(m_audioSink->state()==QAudio::StoppedState  || m_audioSink->error() !=QAudio::NoError )
         m_audioOutput = m_audioSink->start();
     m_audioOutput->write(reinterpret_cast<char*>(audio.data), audio.size);
-
+    qDebug() << audio.size;
     audio.clean();
     m_timer.start(200);
 }
