@@ -6,6 +6,7 @@
 #include <QPushButton>
 #include <QResizeEvent>
 #include <vulkan/vulkanwidget.h>
+#include "vulkan/vulkanrenderer.h"
 
 ViewerWidget::ViewerWidget(VulkanWindow* vulkanWindow,QWidget *parent)
     : QWidget{parent}
@@ -70,8 +71,10 @@ void ViewerWidget::setSrcRes(int width, int height)
 
 void ViewerWidget::setImage(VideoFrame frame)
 {
-    lastFrame.clean();
-
+    if(frame.height==-1 || !frame.frameData)
+        return;
+    m_vulkanWindow->renderer->newImage(frame);
+    return;
     QPixmap surface = m_label->pixmap();
     QImage img;
     if(frame.height!=-1)

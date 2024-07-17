@@ -395,6 +395,20 @@ void VulkanRenderer::startNextFrame()
 
 }
 
+void VulkanRenderer::newImage(VideoFrame frame)
+{
+    m_devFuncs->vkQueueWaitIdle(m_window->graphicsQueue());
+    m_image=loadImage(frame);
+
+        DescriptorWriter writer;
+        writer.write_image(0,m_image.imageView,m_linearSampler,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        m_devFuncs->vkQueueWaitIdle(m_window->graphicsQueue());
+
+    writer.update_set(m_window->device(),m_frameDescriptor[0]);
+    frame.clean();
+
+}
+
 void VulkanRenderer::immediate_submit(std::function<void (VkCommandBuffer)> &&function)
 {
     VK_CHECK(m_devFuncs->vkResetFences(m_window->device(), 1, &m_imFence));
@@ -473,6 +487,28 @@ AllocatedImage VulkanRenderer::loadImage(std::string path)
         stbi_image_free(data);
     }else{
         qDebug() << "could not load image with stbi: " << path;
+    }
+    return newImage;
+}
+
+AllocatedImage VulkanRenderer::loadImage(VideoFrame frame)
+{
+    AllocatedImage newImage {};
+
+    int width, height, nrChannels;
+
+    //unsigned char* data = stbi_load(path.c_str(), &width, &height, &nrChannels, 4);
+    if (frame.frameData) {
+        VkExtent3D imagesize;
+        imagesize.width = frame.width;
+        imagesize.height = frame.height;
+        imagesize.depth = 1;
+
+        newImage = create_image(frame.frameData, imagesize, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,false);
+
+        //stbi_image_free(data);
+    }else{
+        qDebug() << "could not load image with stbi: ";
     }
     return newImage;
 }
@@ -607,14 +643,14 @@ void VulkanRenderer::update()
     *m_transformDataUniform  = m_transformData;
     if(m_transformData.scale> 2)
     {
-        AllocatedImage nextImage = m_image2;
-        if(m_nextImage%2==1)
-            nextImage=m_image;
-        DescriptorWriter writer;
-        writer.write_image(0,nextImage.imageView,m_linearSampler,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        m_devFuncs->vkQueueWaitIdle(m_window->graphicsQueue());
+        // AllocatedImage nextImage = m_image2;
+        // if(m_nextImage%2==1)
+        //     nextImage=m_image;
+        // DescriptorWriter writer;
+        // writer.write_image(0,nextImage.imageView,m_linearSampler,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        // m_devFuncs->vkQueueWaitIdle(m_window->graphicsQueue());
 
-        writer.update_set(m_window->device(),m_frameDescriptor[0]);
+        // writer.update_set(m_window->device(),m_frameDescriptor[0]);
         m_transformData.scale = 1;
         *m_transformDataUniform  = m_transformData;
         m_nextImage++;

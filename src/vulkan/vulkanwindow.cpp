@@ -48,6 +48,7 @@ QVulkanWindowRenderer *VulkanWindow::createRenderer()
     QByteArrayList extensions;
     extensions << VK_KHR_SWAPCHAIN_EXTENSION_NAME
                << VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME;
-    return new VulkanRenderer(this);
+    renderer = new VulkanRenderer(this);
+    return renderer;
 }
 

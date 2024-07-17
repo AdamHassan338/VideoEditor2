@@ -8,6 +8,7 @@
 #include "vk_types.h"
 #include "vk_descriptors.h"
 #include <span>
+#include "video.h"
 
 struct GPUSceneData {
     float scale;
@@ -32,6 +33,7 @@ public:
     void releaseSwapChainResources() override;
     void releaseResources() override;
     void startNextFrame() override;
+    void newImage(VideoFrame frame);
 
     VmaAllocator m_allocator;
 
@@ -101,6 +103,8 @@ private:
     VkCommandBuffer m_imCommandBuffer;
     VkCommandPool m_imCommandPool;
     AllocatedImage loadImage(std::string path );
+    AllocatedImage loadImage(VideoFrame frame);
+
     AllocatedImage create_image(void* data, VkExtent3D size, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
     AllocatedImage create_image(VkExtent3D size, VkFormat format, VkImageUsageFlags usage, bool mipmapped);
     GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
