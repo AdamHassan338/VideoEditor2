@@ -73,7 +73,7 @@ void ViewerWidget::setImage(VideoFrame frame)
 {
     if(frame.height==-1 || !frame.frameData)
         return;
-    m_vulkanWindow->renderer->newImage(frame);
+    m_vulkanWindow->renderer()->newImage(frame);
     return;
     QPixmap surface = m_label->pixmap();
     QImage img;

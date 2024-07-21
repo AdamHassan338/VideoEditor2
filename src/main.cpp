@@ -26,7 +26,7 @@
 #include <stb_image.h>
 
 
-
+#include "VkBootstrap.h"
 
 int main(int argc, char *argv[]){
     QColor bgColour = QColor("#262626");
@@ -38,29 +38,21 @@ int main(int argc, char *argv[]){
     qRegisterMetaType<MediaType>("MediaType");
 
 
-    QVulkanInstance inst;
-    inst.setLayers({ "VK_LAYER_KHRONOS_validation",VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME });
-    //inst.setLayers({VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME });
 
-    inst.setApiVersion(QVersionNumber(1, 3));
+    vkb::InstanceBuilder builder;
 
+    bool bUseValidationLayers = true;
+    auto inst_ret = builder.set_app_name("VideoEditor2")
+                        .request_validation_layers(bUseValidationLayers)
+                        //.enable_extension(VK_NV_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME)
+                        .use_default_debug_messenger()
+                        .require_api_version(1, 3, 0)
+                        .build();
 
-    if (!inst.create())
-        qFatal("Failed to create Vulkan instance: %d", inst.errorCode());
+    vkb::Instance vkb_inst = inst_ret.value();
 
+    VulkanWindow vw(vkb_inst);
 
-    //qDebug() << inst.apiVersion();
-    //qDebug() << inst.extensions();
-    VulkanWindow vw;
-    //w.setFormat(format);
-    //w.setEnabledFeaturesModifier(modifyDeviceFeatures);
-
-
-    vw.setVulkanInstance(&inst);
-
-
-    //w.resize(1024, 768);
-    //w.show();
 
     EditorWindow w(&vw);
     QPalette palette = w.palette();

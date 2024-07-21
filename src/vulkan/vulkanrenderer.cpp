@@ -3,14 +3,16 @@
 #include <QVulkanInstance>
 
 #include <vulkan/vulkan.h>
-#include <QVulkanDeviceFunctions>
 #include <vulkan/vulkan_core.h>
 #include <QRandomGenerator>
 #include "stb_image.h"
 #include "vk_pipelines.h"
+#include "vk_images.h"
 #include "vk_initializers.h"
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
+#include "vulkanwindow.h"
+
 
 VulkanRenderer::VulkanRenderer(VulkanWindow *window) : m_window(window)
 {
@@ -27,20 +29,20 @@ void VulkanRenderer::initdiscriptors(){
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1}
         };
 
-    globalDescriptorAllocator.init(m_window->device(), 10, sizes);
+    globalDescriptorAllocator.init(m_window->getDevice(), 10, sizes);
 
     //make the descriptor set layout for scene data
     {
         DescriptorLayoutBuilder builder;
         builder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-        m_TransformDataDescriptorLayout = builder.build(m_window->device(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+        m_TransformDataDescriptorLayout = builder.build(m_window->getDevice(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
     }
 
     {
         DescriptorLayoutBuilder builder;
         builder.add_binding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        m_singleImageDescriptorLayout = builder.build(m_window->device(), VK_SHADER_STAGE_FRAGMENT_BIT);
+        m_singleImageDescriptorLayout = builder.build(m_window->getDevice(), VK_SHADER_STAGE_FRAGMENT_BIT);
     }
 
 
@@ -68,18 +70,18 @@ void VulkanRenderer::initdiscriptors(){
     layouts.push_back(m_singleImageDescriptorLayout);
     layouts.push_back(m_TransformDataDescriptorLayout);
 
-    m_frameDescriptor = globalDescriptorAllocator.allocate(m_window->device(),layouts);
+    m_frameDescriptor = globalDescriptorAllocator.allocate(m_window->getDevice(),layouts);
     {
         DescriptorWriter writer;
-        //m_singleImageDescriptor = globalDescriptorAllocator.allocate(m_window->device(),m_singleImageDescriptorLayout);
+        //m_singleImageDescriptor = globalDescriptorAllocator.allocate(m_window->getDevice(),m_singleImageDescriptorLayout);
         writer.write_image(0,m_image.imageView,m_linearSampler,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        writer.update_set(m_window->device(),m_frameDescriptor[0]);
+        writer.update_set(m_window->getDevice(),m_frameDescriptor[0]);
     }
 
     {
         DescriptorWriter writer;
         writer.write_buffer(0, m_transformDataBuffer.buffer, sizeof(TransformData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-        writer.update_set(m_window->device(), m_frameDescriptor[1]);
+        writer.update_set(m_window->getDevice(), m_frameDescriptor[1]);
     }
 
 
@@ -88,10 +90,10 @@ void VulkanRenderer::initdiscriptors(){
 void VulkanRenderer::initpipeline(){
 
     //load shaders
-    if(!vkutil::load_shader_module("./vulkan/shaders/tex_image.vert.spv",m_window->device(),&m_vertexShader)){
+    if(!vkutil::load_shader_module("./vulkan/shaders/tex_image.vert.spv",m_window->getDevice(),&m_vertexShader)){
         qDebug()<< "COULD NOT CREATE VERTEX SHADER";
     }
-    if(!vkutil::load_shader_module("./vulkan/shaders/tex_image.frag.spv",m_window->device(),&m_fragmentShader)){
+    if(!vkutil::load_shader_module("./vulkan/shaders/tex_image.frag.spv",m_window->getDevice(),&m_fragmentShader)){
         qDebug()<< "COULD NOT CREATE fragment SHADER";
 
     }
@@ -107,7 +109,7 @@ void VulkanRenderer::initpipeline(){
     layoutBuilder.add_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     //layoutBuilder.add_binding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
-    m_materialLayout = layoutBuilder.build(m_window->device(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    m_materialLayout = layoutBuilder.build(m_window->getDevice(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
     VkDescriptorSetLayout layouts[] = { m_singleImageDescriptorLayout,
                                        m_TransformDataDescriptorLayout
                                         };
@@ -118,7 +120,7 @@ void VulkanRenderer::initpipeline(){
     mesh_layout_info.pPushConstantRanges = &matrixRange;
     mesh_layout_info.pushConstantRangeCount = 1;
 
-    VK_CHECK(m_devFuncs->vkCreatePipelineLayout(m_window->device(), &mesh_layout_info, nullptr, &m_meshPipelineLayout));
+    VK_CHECK(vkCreatePipelineLayout(m_window->getDevice(), &mesh_layout_info, nullptr, &m_meshPipelineLayout));
 
     PipelineBuilder builder;
         builder._pipelineLayout = m_meshPipelineLayout;
@@ -135,16 +137,16 @@ void VulkanRenderer::initpipeline(){
     builder.set_color_attachment_format(VK_FORMAT_B8G8R8A8_SRGB);
 
     //pipelineBuilder.set_depth_format(_depthImage.imageFormat);
-    m_meshPipeline = builder.build_pipeline(m_window->device());
+    m_meshPipeline = builder.build_pipeline(m_window->getDevice());
 }
 
 void VulkanRenderer::initResources()
 {
     qDebug("initResources");
 
-    VkDevice dev = m_window->device();
-    QVulkanInstance *inst = m_window->vulkanInstance();
-    m_devFuncs = inst->deviceFunctions(m_window->device());
+    VkDevice dev = m_window->getDevice();
+    QVulkanInstance *inst = static_cast<QVulkanInstance*>(m_window->vulkanInstance());
+    //m_devFuncs = inst->deviceFunctions(m_window->getDevice());
 
 
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = reinterpret_cast<PFN_vkGetInstanceProcAddr>(inst->getInstanceProcAddr("vkGetInstanceProcAddr"));
@@ -156,15 +158,15 @@ void VulkanRenderer::initResources()
 
 
     VmaAllocatorCreateInfo allocatorInfo = {};
-    allocatorInfo.physicalDevice = m_window->physicalDevice();
+    allocatorInfo.physicalDevice = m_window->getPhysicalDevice();
     allocatorInfo.device = dev;
     allocatorInfo.instance = inst->vkInstance();
     allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     allocatorInfo.pVulkanFunctions = &vulkanFunctions;
     vmaCreateAllocator(&allocatorInfo, &m_allocator);
 
-    VkDevice device = m_window->device();
-    VkQueue m_graphicsQueue = m_window->graphicsQueue();
+    VkDevice device = m_window->getDevice();
+    VkQueue m_graphicsQueue = m_window->getGraphicsQueue();
 
 
     // Create imm fence
@@ -174,16 +176,16 @@ void VulkanRenderer::initResources()
 
     fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    VK_CHECK(m_devFuncs->vkCreateFence(m_window->device(), &fenceCreateInfo, nullptr, &m_imFence));
+    VK_CHECK(vkCreateFence(m_window->getDevice(), &fenceCreateInfo, nullptr, &m_imFence));
 
     //create imediate cmd pool
-    VkCommandPoolCreateInfo commandPoolInfo = vkinit::command_pool_create_info(m_window->graphicsQueueFamilyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-    VK_CHECK(m_devFuncs->vkCreateCommandPool(m_window->device(), &commandPoolInfo, nullptr, &m_imCommandPool));
+    VkCommandPoolCreateInfo commandPoolInfo = vkinit::command_pool_create_info(m_window->getGraphicsQueueFamilyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    VK_CHECK(vkCreateCommandPool(m_window->getDevice(), &commandPoolInfo, nullptr, &m_imCommandPool));
 
     // allocate the command buffer for immediate submits
     VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(m_imCommandPool, 1);
 
-    VK_CHECK(m_devFuncs->vkAllocateCommandBuffers(m_window->device(), &cmdAllocInfo, &m_imCommandBuffer));
+    VK_CHECK(vkAllocateCommandBuffers(m_window->getDevice(), &cmdAllocInfo, &m_imCommandBuffer));
 
 
     //create samplers
@@ -193,17 +195,25 @@ void VulkanRenderer::initResources()
     sampl.magFilter = VK_FILTER_NEAREST;
     sampl.minFilter = VK_FILTER_NEAREST;
 
-    m_devFuncs->vkCreateSampler(m_window->device(), &sampl, nullptr, &m_nearestSampler);
+    vkCreateSampler(m_window->getDevice(), &sampl, nullptr, &m_nearestSampler);
 
     sampl.magFilter = VK_FILTER_LINEAR;
     sampl.minFilter = VK_FILTER_LINEAR;
-    m_devFuncs->vkCreateSampler(m_window->device(), &sampl, nullptr, &m_linearSampler);
+    vkCreateSampler(m_window->getDevice(), &sampl, nullptr, &m_linearSampler);
 
 
     // Load image
     m_image = loadImage("/home/adam/Downloads/IMG_4918.jpg");
     // Load image
     m_image2 = loadImage("/home/adam/Downloads/APkrFKbupUzidYRMSttoZZW2GkJzvqxyxV7E5R-tmaorHAs176-c-k-c0x00ffffff-no-rj.png");
+
+    VkExtent3D imageSize;
+    imageSize.width =  1920;
+    imageSize.height = 1080;
+    imageSize.depth = 1;
+
+    m_drawImage = create_image(imageSize,VK_FORMAT_B8G8R8A8_SRGB,VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,false);
+
     initdiscriptors();
     initpipeline();
 
@@ -267,15 +277,15 @@ void VulkanRenderer::releaseResources()
 void VulkanRenderer::startNextFrame()
 {
     update();
-    VkImage swapchainImage = m_window->swapChainImage(m_window->currentSwapChainImageIndex());
-    VkCommandBuffer cmd = m_window->currentCommandBuffer();
-    m_devFuncs;
-    VkImageView view=  m_window->swapChainImageView(m_window->currentSwapChainImageIndex());
+    VkImage swapchainImage = m_window->getCurrentSwapchainImage();
+    VkCommandBuffer cmd = m_window->getCurrentCommandBuffer();
+
+    VkImageView view=  m_window->getCurrentSwapchainImageView();
 
 
 
 
-    //VK_CHECK(m_devFuncs->vkResetCommandBuffer(cmd, 0));
+    //VK_CHECK(vkResetCommandBuffer(cmd, 0));
 
    /* VkCommandBufferBeginInfo cmdBufBeginInfo = {};
     cmdBufBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -305,19 +315,19 @@ void VulkanRenderer::startNextFrame()
     renderingInfo.colorAttachmentCount = 1;
     renderingInfo.pColorAttachments = &colorAttachment;
 
-    transitionImage(cmd,m_devFuncs,swapchainImage,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL);
+    vkutil::transition_image(cmd,swapchainImage,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL);
 
     // Begin command buffer DONE BY QT
-    //m_devFuncs->vkBeginCommandBuffer(cmd, &cmdBufBeginInfo);
+    //vkBeginCommandBuffer(cmd, &cmdBufBeginInfo);
 
     // Begin dynamic rendering
-    m_devFuncs->vkCmdBeginRendering(cmd, &renderingInfo);
+    vkCmdBeginRendering(cmd, &renderingInfo);
 
     // End dynamic rendering
-    m_devFuncs->vkCmdEndRendering(cmd);
+    vkCmdEndRendering(cmd);
 
     // End command buffer DONE BY QT
-    //m_devFuncs->vkEndCommandBuffer(cmd);
+    //vkEndCommandBuffer(cmd);
     VkExtent2D swapSize;
     swapSize.height = m_window->swapChainImageSize().height();
     swapSize.width = m_window->swapChainImageSize().width();
@@ -326,32 +336,38 @@ void VulkanRenderer::startNextFrame()
     imageSize.height = m_image.imageExtent.height;
     imageSize.width = m_image.imageExtent.width;
 
-    //transitionImage(cmd,m_devFuncs,m_image.image,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    //vkutil::transition_image(cmd,m_image.image,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
 
-    //transitionImage(cmd,m_devFuncs,swapchainImage,VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    //vkutil::transition_image(cmd,swapchainImage,VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    copy_image_to_image(cmd,m_devFuncs,m_image.image,swapchainImage,imageSize,swapSize );
+    copy_image_to_image(cmd,m_image.image,swapchainImage,imageSize,swapSize );
 
-    transitionImage(cmd,m_devFuncs,swapchainImage,VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-    //transitionImage(cmd,m_devFuncs,m_image.image,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    vkutil::transition_image(cmd,swapchainImage,VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    //vkutil::transition_image(cmd,m_image.image,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     */
     VkClearValue clearColor = {0, 0, 0, 1.0f};
 
     VkExtent2D swapSize;
-    swapSize.height = m_window->swapChainImageSize().height();
-    swapSize.width = m_window->swapChainImageSize().width();
+    VkExtent2D drawSize;
+    swapSize.height = m_window->swapChainImageSize().height;
+    swapSize.width = m_window->swapChainImageSize().width;
+    drawSize.height = 1080;
+    drawSize.width = 1920;
 
-    VkRenderingAttachmentInfo colourAttachment = vkinit::attachment_info(view,&clearColor,VK_IMAGE_LAYOUT_GENERAL);
-    VkRenderingInfo renderInfo = vkinit::rendering_info(swapSize, &colourAttachment, nullptr);
+    VkRenderingAttachmentInfo colourAttachment = vkinit::attachment_info(m_drawImage.imageView,&clearColor,VK_IMAGE_LAYOUT_GENERAL);
 
-    transitionImage(cmd,m_devFuncs,swapchainImage,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL);
+    //VkRenderingAttachmentInfo colourAttachment = vkinit::attachment_info(view,&clearColor,VK_IMAGE_LAYOUT_GENERAL);
+    VkRenderingInfo renderInfo = vkinit::rendering_info(drawSize, &colourAttachment, nullptr);
 
-    m_devFuncs->vkCmdBeginRendering(cmd,&renderInfo);
+    vkutil::transition_image(cmd,swapchainImage,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL);
+    vkutil::transition_image(cmd,m_drawImage.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL);
 
-    m_devFuncs->vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_meshPipeline);
+    vkCmdBeginRendering(cmd,&renderInfo);
 
-    m_devFuncs->vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,m_meshPipelineLayout, 0, m_frameDescriptor.size(),
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_meshPipeline);
+
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,m_meshPipelineLayout, 0, m_frameDescriptor.size(),
                                         m_frameDescriptor.data(), 0, nullptr);
 
 
@@ -359,116 +375,95 @@ void VulkanRenderer::startNextFrame()
     VkViewport viewport = {};
     viewport.x = 0;
     viewport.y = 0;
-    viewport.width = (float)swapSize.width;
-    viewport.height = (float)swapSize.height;
+    viewport.width = (float)drawSize.width;
+    viewport.height = (float)drawSize.height;
     viewport.minDepth = 0.f;
     viewport.maxDepth = 1.f;
 
-    m_devFuncs->vkCmdSetViewport(cmd, 0, 1, &viewport);
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
 
     VkRect2D scissor = {};
     scissor.offset.x = 0;
     scissor.offset.y = 0;
-    scissor.extent.width = swapSize.width;
-    scissor.extent.height = swapSize.height;
+    scissor.extent.width = drawSize.width;
+    scissor.extent.height = drawSize.height;
 
-    m_devFuncs->vkCmdSetScissor(cmd, 0, 1, &scissor);
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
 
     GPUDrawPushConstants push_constants;
     //push_constants.worldMatrix = QMatrix4x4();
     push_constants.vertexBuffer = rectangle.vertexBufferAddress;
 
-    m_devFuncs->vkCmdPushConstants(cmd, m_meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &push_constants);
-    m_devFuncs->vkCmdBindIndexBuffer(cmd, rectangle.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdPushConstants(cmd, m_meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &push_constants);
+    vkCmdBindIndexBuffer(cmd, rectangle.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-    m_devFuncs->vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 
-    m_devFuncs->vkCmdEndRendering(cmd);
+    vkCmdEndRendering(cmd);
 
-    transitionImage(cmd,m_devFuncs,swapchainImage,VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+
+    vkutil::transition_image(cmd,swapchainImage,VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    vkutil::transition_image(cmd,m_drawImage.image,VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+    vkutil::copy_image_to_image(cmd,m_drawImage.image,swapchainImage,drawSize,swapSize);
+
+    vkutil::transition_image(cmd,swapchainImage,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
 
 
     m_window->frameReady();
-    m_window->requestUpdate();
+   // m_window->requestUpdate();
 
 
 }
 
 void VulkanRenderer::newImage(VideoFrame frame)
 {
-    m_devFuncs->vkQueueWaitIdle(m_window->graphicsQueue());
+    vkQueueWaitIdle(m_window->getGraphicsQueue());
     vmaDestroyImage(m_allocator, m_image.image, m_image.allocation);
 
     m_image=loadImage(frame);
 
         DescriptorWriter writer;
         writer.write_image(0,m_image.imageView,m_linearSampler,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        m_devFuncs->vkQueueWaitIdle(m_window->graphicsQueue());
+        vkQueueWaitIdle(m_window->getGraphicsQueue());
 
-    writer.update_set(m_window->device(),m_frameDescriptor[0]);
+    writer.update_set(m_window->getDevice(),m_frameDescriptor[0]);
     frame.clean();
 
 }
 
 void VulkanRenderer::immediate_submit(std::function<void (VkCommandBuffer)> &&function)
 {
-    VK_CHECK(m_devFuncs->vkResetFences(m_window->device(), 1, &m_imFence));
-    VK_CHECK(m_devFuncs->vkResetCommandBuffer(m_imCommandBuffer, 0));
+    VK_CHECK(vkResetFences(m_window->getDevice(), 1, &m_imFence));
+    VK_CHECK(vkResetCommandBuffer(m_imCommandBuffer, 0));
 
     VkCommandBuffer cmd = m_imCommandBuffer;
 
     VkCommandBufferBeginInfo cmdBeginInfo = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-    VK_CHECK(m_devFuncs->vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+    VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
     function(cmd);
 
-    VK_CHECK(m_devFuncs->vkEndCommandBuffer(cmd));
+    VK_CHECK(vkEndCommandBuffer(cmd));
 
     VkCommandBufferSubmitInfo cmdinfo = vkinit::command_buffer_submit_info(cmd);
     VkSubmitInfo2 submit = vkinit::submit_info(&cmdinfo, nullptr, nullptr);
 
     // submit command buffer to the queue and execute it.
     //  _renderFence will now block until the graphic commands finish execution
-    VK_CHECK(m_devFuncs->vkQueueSubmit2(m_window->graphicsQueue(), 1, &submit, m_imFence));
+    VK_CHECK(vkQueueSubmit2(m_window->getGraphicsQueue(), 1, &submit, m_imFence));
 
-    VK_CHECK(m_devFuncs->vkWaitForFences(m_window->device(), 1, &m_imFence, true, 9999999999));
+    VK_CHECK(vkWaitForFences(m_window->getDevice(), 1, &m_imFence, true, 9999999999));
 }
 
 void VulkanRenderer::preInitResources()
 {
-    m_window->setDeviceExtensions({VK_KHR_SWAPCHAIN_EXTENSION_NAME,VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME});
+   // m_window->setDeviceExtensions({VK_KHR_SWAPCHAIN_EXTENSION_NAME,VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME});
 
-}
-
-
-
-void transitionImage(VkCommandBuffer cmd, QVulkanDeviceFunctions* dev , VkImage image, VkImageLayout currentLayout, VkImageLayout newLayout)
-{
-    VkImageMemoryBarrier2 imageBarrier {.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
-    imageBarrier.pNext = nullptr;
-
-    imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-    imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
-    imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-    imageBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
-
-    imageBarrier.oldLayout = currentLayout;
-    imageBarrier.newLayout = newLayout;
-
-    VkImageAspectFlags aspectMask = (newLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-    imageBarrier.subresourceRange = vkinit::image_subresource_range(aspectMask);
-    imageBarrier.image = image;
-
-    VkDependencyInfo depInfo {};
-    depInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-    depInfo.pNext = nullptr;
-
-    depInfo.imageMemoryBarrierCount = 1;
-    depInfo.pImageMemoryBarriers = &imageBarrier;
-
-    dev->vkCmdPipelineBarrier2(cmd, &depInfo);
 }
 
 AllocatedImage VulkanRenderer::loadImage(std::string path)
@@ -525,7 +520,7 @@ AllocatedImage VulkanRenderer::create_image(void *data, VkExtent3D size, VkForma
     AllocatedImage new_image = create_image(size, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, mipmapped);
 
     immediate_submit([&](VkCommandBuffer cmd) {
-        transitionImage(cmd,m_devFuncs, new_image.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        vkutil::transition_image(cmd,new_image.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
         VkBufferImageCopy copyRegion = {};
         copyRegion.bufferOffset = 0;
@@ -539,13 +534,13 @@ AllocatedImage VulkanRenderer::create_image(void *data, VkExtent3D size, VkForma
         copyRegion.imageExtent = size;
 
         // copy the buffer into the image
-        m_devFuncs->vkCmdCopyBufferToImage(cmd, uploadbuffer.buffer, new_image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+        vkCmdCopyBufferToImage(cmd, uploadbuffer.buffer, new_image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
                                &copyRegion);
 
         if (mipmapped) {
            //generate_mipmaps(cmd, new_image.image,VkExtent2D{new_image.imageExtent.width,new_image.imageExtent.height});
         } else {
-            transitionImage(cmd,m_devFuncs, new_image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            vkutil::transition_image(cmd, new_image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         }
     });
@@ -585,7 +580,7 @@ AllocatedImage VulkanRenderer::create_image(VkExtent3D size, VkFormat format, Vk
     VkImageViewCreateInfo view_info = vkinit::imageview_create_info(format, newImage.image, aspectFlag);
     view_info.subresourceRange.levelCount = img_info.mipLevels;
 
-    VK_CHECK(m_devFuncs->vkCreateImageView(m_window->device(), &view_info, nullptr, &newImage.imageView));
+    VK_CHECK(vkCreateImageView(m_window->getDevice(), &view_info, nullptr, &newImage.imageView));
 
     return newImage;
 }
@@ -602,7 +597,7 @@ GPUMeshBuffers VulkanRenderer::uploadMesh(std::span<uint32_t> indices, std::span
 
     //find the adress of the vertex buffer
     VkBufferDeviceAddressInfo deviceAdressInfo{ .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,.buffer = newSurface.vertexBuffer.buffer };
-    newSurface.vertexBufferAddress = m_devFuncs->vkGetBufferDeviceAddress(m_window->device(), &deviceAdressInfo);
+    newSurface.vertexBufferAddress = vkGetBufferDeviceAddress(m_window->getDevice(), &deviceAdressInfo);
 
     //create index buffer
     newSurface.indexBuffer = create_buffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -624,14 +619,14 @@ GPUMeshBuffers VulkanRenderer::uploadMesh(std::span<uint32_t> indices, std::span
         vertexCopy.srcOffset = 0;
         vertexCopy.size = vertexBufferSize;
 
-        m_devFuncs->vkCmdCopyBuffer(cmd, staging.buffer, newSurface.vertexBuffer.buffer, 1, &vertexCopy);
+        vkCmdCopyBuffer(cmd, staging.buffer, newSurface.vertexBuffer.buffer, 1, &vertexCopy);
 
         VkBufferCopy indexCopy{ 0 };
         indexCopy.dstOffset = 0;
         indexCopy.srcOffset = vertexBufferSize;
         indexCopy.size = indexBufferSize;
 
-        m_devFuncs->vkCmdCopyBuffer(cmd, staging.buffer, newSurface.indexBuffer.buffer, 1, &indexCopy);
+        vkCmdCopyBuffer(cmd, staging.buffer, newSurface.indexBuffer.buffer, 1, &indexCopy);
     });
 
     destroy_buffer(staging);
@@ -650,9 +645,9 @@ void VulkanRenderer::update()
         //     nextImage=m_image;
         // DescriptorWriter writer;
         // writer.write_image(0,nextImage.imageView,m_linearSampler,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        // m_devFuncs->vkQueueWaitIdle(m_window->graphicsQueue());
+        // vkQueueWaitIdle(m_window->getGraphicsQueue());
 
-        // writer.update_set(m_window->device(),m_frameDescriptor[0]);
+        // writer.update_set(m_window->getDevice(),m_frameDescriptor[0]);
         m_transformData.scale = 1;
         *m_transformDataUniform  = m_transformData;
         m_nextImage++;
@@ -661,43 +656,9 @@ void VulkanRenderer::update()
     {
         DescriptorWriter writer;
         writer.write_buffer(0, m_transformDataBuffer.buffer, sizeof(TransformData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-        m_devFuncs->vkQueueWaitIdle(m_window->graphicsQueue());
-        writer.update_set(m_window->device(), m_frameDescriptor[1]);
+        vkQueueWaitIdle(m_window->getGraphicsQueue());
+        writer.update_set(m_window->getDevice(), m_frameDescriptor[1]);
     }
 }
 
-
-void copy_image_to_image(VkCommandBuffer cmd, QVulkanDeviceFunctions* dev,  VkImage source, VkImage destination, VkExtent2D srcSize, VkExtent2D dstSize)
-{
-    VkImageBlit2 blitRegion{ .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2, .pNext = nullptr };
-
-    blitRegion.srcOffsets[1].x = srcSize.width;
-    blitRegion.srcOffsets[1].y = srcSize.height;
-    blitRegion.srcOffsets[1].z = 1;
-
-    blitRegion.dstOffsets[1].x = dstSize.width;
-    blitRegion.dstOffsets[1].y = dstSize.height;
-    blitRegion.dstOffsets[1].z = 1;
-
-    blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    blitRegion.srcSubresource.baseArrayLayer = 0;
-    blitRegion.srcSubresource.layerCount = 1;
-    blitRegion.srcSubresource.mipLevel = 0;
-
-    blitRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    blitRegion.dstSubresource.baseArrayLayer = 0;
-    blitRegion.dstSubresource.layerCount = 1;
-    blitRegion.dstSubresource.mipLevel = 0;
-
-    VkBlitImageInfo2 blitInfo{ .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2, .pNext = nullptr };
-    blitInfo.dstImage = destination;
-    blitInfo.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    blitInfo.srcImage = source;
-    blitInfo.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    blitInfo.filter = VK_FILTER_LINEAR;
-    blitInfo.regionCount = 1;
-    blitInfo.pRegions = &blitRegion;
-
-    dev->vkCmdBlitImage2(cmd, &blitInfo);
-}
 

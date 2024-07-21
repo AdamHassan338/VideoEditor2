@@ -43,6 +43,8 @@ find_library(SWRESAMPLE_LIBRARY swresample)
 #add_subdirectory(lib/glm)
 #add_subdirectory(lib/glew)
 #add_subdirectory(lib/assimp)
+add_subdirectory(lib/vk-bootstrap)
+
 
 file(GLOB_RECURSE SOURCES
     src/*.cpp
@@ -53,7 +55,7 @@ file(GLOB_RECURSE GUI
     src/gui/timeline/*.h
 )
 
-file(GLOB_RECURSE Vulkan
+file(GLOB_RECURSE VULKAN
     src/vulkan/*.cpp
     src/vulkan/*.h
 )
@@ -78,7 +80,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 
 
 target_include_directories(${PROJECT_NAME}  PRIVATE ${AVCODEC_INCLUDE_DIR} ${AVFILTER_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR} ${AVUTIL_INCLUDE_DIR} ${AVDEVICE_INCLUDE_DIR} ${SWSCALE_INCLUDE_DIR} ${SWRESAMPLE_INCLUDE_DIR} )
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Multimedia Qt${QT_VERSION_MAJOR}::MultimediaWidgets ${AVCODEC_LIBRARY} ${AVFILTER_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${AVDEVICE_LIBRARY} ${SWSCALE_LIBRARY} ${SWRESAMPLE_LIBRARY} Vulkan::Vulkan)
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Multimedia Qt${QT_VERSION_MAJOR}::MultimediaWidgets ${AVCODEC_LIBRARY} ${AVFILTER_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${AVDEVICE_LIBRARY} ${SWSCALE_LIBRARY} ${SWRESAMPLE_LIBRARY} vk-bootstrap::vk-bootstrap  Vulkan::Vulkan)
 
 
 
@@ -91,6 +93,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_SOURCE_DIR}/src/gui/viewer
     ${CMAKE_SOURCE_DIR}/lib/vma
     ${CMAKE_SOURCE_DIR}/lib/stb_image
+    ${CMAKE_SOURCE_DIR}/lib/vk-bootstrap
 
 
 

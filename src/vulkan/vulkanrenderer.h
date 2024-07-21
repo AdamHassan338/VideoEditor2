@@ -1,8 +1,6 @@
 #ifndef VULKANRENDERER_H
 #define VULKANRENDERER_H
 
-#include <QVulkanWindowRenderer>
-#include "vulkanwindow.h"
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_enum_string_helper.h>
 #include "vk_types.h"
@@ -18,21 +16,29 @@ struct TransformData {
     float scale = 1.f;
     float rotation = 0.f;
 };
-void transitionImage(VkCommandBuffer cmd, QVulkanDeviceFunctions* dev ,VkImage image, VkImageLayout currentLayout, VkImageLayout newLayout);
+// void transitionImage(VkCommandBuffer cmd, QVulkanDeviceFunctions* dev ,VkImage image, VkImageLayout currentLayout, VkImageLayout newLayout);
 
-void copy_image_to_image(VkCommandBuffer cmd, QVulkanDeviceFunctions *dev, VkImage source, VkImage destination, VkExtent2D srcSize, VkExtent2D dstSize);
-class VulkanRenderer : public QVulkanWindowRenderer
+// void copy_image_to_image(VkCommandBuffer cmd, QVulkanDeviceFunctions *dev, VkImage source, VkImage destination, VkExtent2D srcSize, VkExtent2D dstSize);
+
+class VulkanWindow;
+
+class VulkanRenderer
 {
 public:
     VulkanRenderer(VulkanWindow* window);
 
     // QVulkanWindowRenderer interface
 public:
-    void initResources() override;
-    void initSwapChainResources() override;
-    void releaseSwapChainResources() override;
-    void releaseResources() override;
-    void startNextFrame() override;
+    void init(){
+        initResources();
+
+    }
+
+    void initResources() ;
+    void initSwapChainResources() ;
+    void releaseSwapChainResources() ;
+    void releaseResources() ;
+    void startNextFrame() ;
     void newImage(VideoFrame frame);
 
     VmaAllocator m_allocator;
@@ -68,8 +74,7 @@ public:
 
 
 private:
-    QVulkanWindow* m_window;
-    QVulkanDeviceFunctions *m_devFuncs;
+    VulkanWindow* m_window;
 
     VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
     VkPipeline m_pipeline = VK_NULL_HANDLE;
@@ -105,12 +110,14 @@ private:
     AllocatedImage loadImage(std::string path );
     AllocatedImage loadImage(VideoFrame frame);
 
+
     AllocatedImage create_image(void* data, VkExtent3D size, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
     AllocatedImage create_image(VkExtent3D size, VkFormat format, VkImageUsageFlags usage, bool mipmapped);
     GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
 
     AllocatedImage m_image;
     AllocatedImage m_image2;
+    AllocatedImage m_drawImage;
     int m_nextImage = 0;
 
     //frame stuff
@@ -133,7 +140,7 @@ private slots:
 
     // QVulkanWindowRenderer interface
 public:
-    void preInitResources() override;
+    void preInitResources() ;
 };
 
 #endif // VULKANRENDERER_H
